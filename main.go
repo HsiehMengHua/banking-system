@@ -1,10 +1,15 @@
 package main
 
 import (
+	"banking-system/database"
 	"banking-system/router"
 
 	"github.com/gin-gonic/gin"
 )
+
+func init() {
+	database.Connect()
+}
 
 func main() {
 	r := gin.Default()
