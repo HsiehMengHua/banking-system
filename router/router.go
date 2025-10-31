@@ -1,15 +1,26 @@
 package router
 
 import (
+	"banking-system/controllers"
+	"banking-system/docs"
+
 	"github.com/gin-gonic/gin"
+	swaggerfiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-func Setup(r *gin.Engine) {
+func Setup() *gin.Engine {
+	r := gin.Default()
+	docs.SwaggerInfo.BasePath = "/api/v1"
 	r.StaticFile("/version", "./version.txt")
 
-	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
-	})
+	ctrl := controllers.NewPaymentController()
+
+	{
+		payments := r.Group("/payments")
+		payments.POST("/deposit", ctrl.Deposit)
+	}
+
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
+	return r
 }

@@ -5,7 +5,6 @@ import (
 	"banking-system/router"
 	"os"
 
-	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
 
@@ -29,7 +28,6 @@ func loadEnv() {
 }
 
 func main() {
-	r := gin.Default()
-	router.Setup(r)
+	r := router.Setup()
 	r.Run() // listens on 0.0.0.0:8080 by default
 }

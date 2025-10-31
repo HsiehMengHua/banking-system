@@ -1,0 +1,16 @@
+info:
+  contact: {}
+paths:
+  /payments/deposit:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new PENDING transaction and redirects the user to the
+        Payment Service Provider (PSP) for payment completion.
+      produces:
+      - application/json
+      responses: {}
+      summary: Initiate a Deposit Transaction
+      tags:
+      - payments
+swagger: "2.0"

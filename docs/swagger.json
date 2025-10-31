@@ -1,0 +1,24 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "contact": {}
+    },
+    "paths": {
+        "/payments/deposit": {
+            "post": {
+                "description": "Creates a new PENDING transaction and redirects the user to the Payment Service Provider (PSP) for payment completion.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payments"
+                ],
+                "summary": "Initiate a Deposit Transaction",
+                "responses": {}
+            }
+        }
+    }
+}
