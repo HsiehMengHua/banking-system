@@ -3,6 +3,7 @@ package router
 import (
 	"banking-system/controllers"
 	"banking-system/docs"
+	"banking-system/services"
 
 	"github.com/gin-gonic/gin"
 	swaggerfiles "github.com/swaggo/files"
@@ -14,7 +15,7 @@ func Setup() *gin.Engine {
 	docs.SwaggerInfo.BasePath = "/api/v1"
 	r.StaticFile("/version", "./version.txt")
 
-	ctrl := controllers.NewPaymentController()
+	ctrl := controllers.NewPaymentController(services.NewPaymentService())
 
 	{
 		payments := r.Group("/payments")

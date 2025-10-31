@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"banking-system/models"
+	"banking-system/services"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -11,10 +13,13 @@ type PaymentController interface {
 }
 
 type paymentController struct {
+	paymentSrv services.PaymentService
 }
 
-func NewPaymentController() PaymentController {
-	return &paymentController{}
+func NewPaymentController(paymentSrv services.PaymentService) PaymentController {
+	return &paymentController{
+		paymentSrv: paymentSrv,
+	}
 }
 
 // @Summary      Initiate a Deposit Transaction
@@ -23,6 +28,16 @@ func NewPaymentController() PaymentController {
 // @Accept       json
 // @Produce      json
 // @Router       /payments/deposit [post]
-func (*paymentController) Deposit(c *gin.Context) {
+func (ctrl *paymentController) Deposit(c *gin.Context) {
+	var req models.DepositRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Invalid request body or missing field: " + err.Error(),
+		})
+		return
+	}
+
+	ctrl.paymentSrv.Deposit()
 	c.JSON(http.StatusOK, "deposit response")
 }
