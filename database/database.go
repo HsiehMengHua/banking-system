@@ -1,6 +1,7 @@
 package database
 
 import (
+	"banking-system/entities"
 	"log"
 	"os"
 
@@ -20,11 +21,10 @@ func Connect() {
 		log.Panicf("Failed to connect to database: %v", err)
 	}
 
-	// AutoMigrate runs the database migrations, creating or updating the table based on the Item struct.
-	// err = DB.AutoMigrate(&Item{})
-	// if err != nil {
-	// 	log.Panicf("Failed to run database migration: %v", err)
-	// }
+	err = DB.AutoMigrate(&entities.User{}, &entities.Wallet{}, &entities.Transaction{}, &entities.BankAccount{})
+	if err != nil {
+		log.Panicf("Failed to run database migration: %v", err)
+	}
 
 	log.Print("Database connection established and migration complete!")
 }
