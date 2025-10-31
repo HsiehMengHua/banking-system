@@ -3,12 +3,29 @@ package main
 import (
 	"banking-system/database"
 	"banking-system/router"
+	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func init() {
+	loadEnv()
 	database.Connect()
+}
+
+func loadEnv() {
+	env := os.Getenv("APP_ENV")
+	if env == "" {
+		env = "development"
+	}
+
+	godotenv.Load(".env." + env + ".local")
+	if env != "test" {
+		godotenv.Load(".env.local")
+	}
+	godotenv.Load(".env." + env)
+	godotenv.Load() // The Original .env
 }
 
 func main() {
