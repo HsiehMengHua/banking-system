@@ -13,6 +13,7 @@ var DB *gorm.DB
 
 func Connect() {
 	dsn := os.Getenv("DB_DSN")
+	log.Printf("dsn from env: %s", dsn)
 
 	var err error
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
