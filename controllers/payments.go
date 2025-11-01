@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"banking-system/models"
+	"banking-system/psp"
 	"banking-system/services"
 	"net/http"
 
@@ -10,6 +11,8 @@ import (
 
 type PaymentController interface {
 	Deposit(c *gin.Context)
+	Confirm(c *gin.Context)
+	Cancel(c *gin.Context)
 }
 
 type paymentController struct {
@@ -26,7 +29,7 @@ func NewPaymentController(paymentSrv services.PaymentService) PaymentController 
 // @Description  Creates a new PENDING transaction and redirects the user to the Payment Service Provider (PSP) for payment completion.
 // @Tags         payments
 // @Accept       json
-// @Produce      json
+// @Response     302  {object}  object  "Redirect to PSP payment page"
 // @Router       /payments/deposit [post]
 func (ctrl *paymentController) Deposit(c *gin.Context) {
 	var req models.DepositRequest
@@ -41,3 +44,24 @@ func (ctrl *paymentController) Deposit(c *gin.Context) {
 	redirectUrl := ctrl.paymentSrv.Deposit(&req)
 	c.Redirect(http.StatusFound, redirectUrl)
 }
+
+// @Summary      Confirm a Deposit Transaction
+// @Description  Handles the confirmation callback from the Payment Service Provider (PSP) after a successful deposit.
+// @Tags         payments
+// @Accept       json
+// @Response     200  {string}  string	"Deposit confirmed successfully"
+// @Router       /payments/confirm [post]
+func (ctrl *paymentController) Confirm(c *gin.Context) {
+	var req psp.ConfirmRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Invalid request body or missing field: " + err.Error(),
+		})
+		return
+	}
+
+	ctrl.paymentSrv.Confirm(&req)
+	c.Status(http.StatusOK)
+}
+func (ctrl *paymentController) Cancel(c *gin.Context) {}

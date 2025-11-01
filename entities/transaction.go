@@ -1,8 +1,9 @@
 package entities
 
 import (
+	"time"
+
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 type TransactionType string
@@ -34,13 +35,16 @@ var TransactionStatuses = &struct {
 }
 
 type Transaction struct {
-	gorm.Model
+	CreatedAt time.Time
+	UpdatedAt time.Time
 
-	UUID                 uuid.UUID         `gorm:"type:uuid;unique;not null"`
-	WalletID             uint              `gorm:"not null"`
+	UUID                 uuid.UUID         `gorm:"type:uuid;primaryKey;not null"`
 	RelatedTransactionID *uint             `gorm:"index"`
 	Type                 TransactionType   `gorm:"type:varchar(20);not null"`
 	Status               TransactionStatus `gorm:"type:varchar(20);not null"`
 	Amount               float64           `gorm:"type:numeric(18,4);not null"`
 	PaymentMethod        string            `gorm:"type:varchar(50)"`
+
+	WalletID uint `gorm:"not null"`
+	Wallet   Wallet
 }

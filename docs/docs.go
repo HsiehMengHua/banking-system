@@ -15,20 +15,44 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/payments/confirm": {
+            "post": {
+                "description": "Handles the confirmation callback from the Payment Service Provider (PSP) after a successful deposit.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payments"
+                ],
+                "summary": "Confirm a Deposit Transaction",
+                "responses": {
+                    "200": {
+                        "description": "Deposit confirmed successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/payments/deposit": {
             "post": {
                 "description": "Creates a new PENDING transaction and redirects the user to the Payment Service Provider (PSP) for payment completion.",
                 "consumes": [
                     "application/json"
                 ],
-                "produces": [
-                    "application/json"
-                ],
                 "tags": [
                     "payments"
                 ],
                 "summary": "Initiate a Deposit Transaction",
-                "responses": {}
+                "responses": {
+                    "302": {
+                        "description": "Redirect to PSP payment page",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
             }
         }
     }

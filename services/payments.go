@@ -5,15 +5,16 @@ import (
 	"banking-system/models"
 	"banking-system/psp"
 	"banking-system/repos"
-	"log"
 
 	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
 )
 
 //go:generate mockgen -source=payments.go -destination=mock/payments.go
 
 type PaymentService interface {
 	Deposit(req *models.DepositRequest) (redirectUrl string)
+	Confirm(req *psp.ConfirmRequest)
 }
 
 type paymentService struct {
@@ -50,4 +51,27 @@ func (srv *paymentService) Deposit(req *models.DepositRequest) (redirectUrl stri
 	}
 
 	return res.RedirectUrl
+}
+
+func (srv *paymentService) Confirm(req *psp.ConfirmRequest) {
+	tx, err := srv.transactionRepo.GetByUUID(uuid.MustParse(req.TransactionID))
+	if err != nil {
+		log.Panicf("Failed to get transaction: %v", err)
+	}
+
+	if tx.Status != entities.TransactionStatuses.Pending {
+		log.Debugf("Transaction %s is not in PENDING status, current status: %s", req.TransactionID, tx.Status)
+		return
+	}
+
+	tx.Status = entities.TransactionStatuses.Completed
+
+	switch tx.Type {
+	case entities.TransactionTypes.Deposit:
+		tx.Wallet.Balance += tx.Amount
+	default:
+		log.Panicf("Unknown transaction type: %s", tx.Type)
+	}
+
+	srv.transactionRepo.Update(tx)
 }

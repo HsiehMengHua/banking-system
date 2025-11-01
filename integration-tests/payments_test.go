@@ -11,6 +11,7 @@ import (
 	"banking-system/services"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
 	pspMock "banking-system/psp/mock"
@@ -27,11 +29,68 @@ import (
 var r *gin.Engine
 
 func TestMain(m *testing.M) {
+	fmt.Println("TestMain is called")
 	r = router.Setup()
 	database.ConnectTestDB()
-	truncateTables()
 	exitCode := m.Run()
 	os.Exit(exitCode)
+}
+
+var (
+	paymentServiceProviderMock *pspMock.MockPaymentServiceProvider
+)
+
+func TestDeposit(t *testing.T) {
+	truncateTables()
+	ctrl := gomock.NewController(t)
+	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+	sut := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), paymentServiceProviderMock))
+
+	const redirectUrl = "https://external.payment.page/payin"
+	givenDepositRedirectUrl(redirectUrl)
+	user := givenUserHasBalance(0)
+
+	req, _ := json.Marshal(&models.DepositRequest{
+		UserID:        user.ID,
+		Currency:      user.Wallet.Currency,
+		Amount:        100.00,
+		PaymentMethod: "AnyPay",
+	})
+	res := postRequestWithHandler("/payments/deposit", sut.Deposit, req)
+
+	expectTransactionEqual(t, &entities.Transaction{
+		WalletID:      user.Wallet.ID,
+		Type:          entities.TransactionTypes.Deposit,
+		Status:        entities.TransactionStatuses.Pending,
+		Amount:        100.00,
+		PaymentMethod: "AnyPay",
+	})
+	assert.Equal(t, http.StatusFound, res.Code)
+	assert.Equal(t, redirectUrl, res.Result().Header.Get("Location"))
+}
+
+func TestDepositConfirm(t *testing.T) {
+	truncateTables()
+	req := &psp.ConfirmRequest{
+		TransactionID: "705aa863-d9ab-42e6-8122-f76e43edaa19",
+		Amount:        50.00,
+	}
+
+	user := givenUserHasBalance(100)
+	givenTransaction(&entities.Transaction{
+		UUID:     uuid.MustParse(req.TransactionID),
+		Type:     entities.TransactionTypes.Deposit,
+		Status:   entities.TransactionStatuses.Pending,
+		Amount:   req.Amount,
+		WalletID: user.Wallet.ID,
+	})
+
+	body, _ := json.Marshal(req)
+	res := postRequest("/payments/confirm", body)
+
+	assert.Equal(t, http.StatusOK, res.Code)
+	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Completed)
+	expectBalance(t, user.Wallet.ID, 150.00)
 }
 
 func truncateTables() {
@@ -55,50 +114,26 @@ func truncateTables() {
 	database.DB.Exec("SET session_replication_role = 'origin';")
 }
 
-var (
-	paymentServiceProviderMock *pspMock.MockPaymentServiceProvider
-)
-
-func TestValidDeposit(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
-	sut := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), paymentServiceProviderMock))
-
-	const redirectUrl = "https://external.payment.page/payin"
-	givenDepositRedirectUrl(redirectUrl)
-	user := givenUserBalance(0)
-
-	req, _ := json.Marshal(&models.DepositRequest{
-		UserID:        user.ID,
-		Currency:      user.Wallet.Currency,
-		Amount:        100.00,
-		PaymentMethod: "AnyPay",
-	})
-	res := postRequest("/payments/deposit", sut.Deposit, string(req))
-
-	expectTransactionEqual(t, &entities.Transaction{
-		WalletID:      user.Wallet.ID,
-		Type:          entities.TransactionTypes.Deposit,
-		Status:        entities.TransactionStatuses.Pending,
-		Amount:        100.00,
-		PaymentMethod: "AnyPay",
-	})
-	assert.Equal(t, http.StatusFound, res.Code)
-	assert.Equal(t, redirectUrl, res.Result().Header.Get("Location"))
+func postRequest(path string, body []byte) *httptest.ResponseRecorder {
+	res := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", path, bytes.NewReader(body))
+	req.Header.Add("Content-Type", "application/json")
+	r.ServeHTTP(res, req)
+	return res
 }
 
-func postRequest(path string, handler func(c *gin.Context), body string) *httptest.ResponseRecorder {
+func postRequestWithHandler(path string, handler func(c *gin.Context), body []byte) *httptest.ResponseRecorder {
 	res := httptest.NewRecorder()
 	ctx, r := gin.CreateTestContext(res)
 	r.POST(path, handler)
-	ctx.Request = httptest.NewRequest(http.MethodPost, path, bytes.NewReader([]byte(body)))
+	ctx.Request = httptest.NewRequest(http.MethodPost, path, bytes.NewReader(body))
 	ctx.Request.Header.Set("Content-Type", "application/json")
 
 	r.ServeHTTP(res, ctx.Request)
 	return res
 }
 
-func givenUserBalance(amount float64) *entities.User {
+func givenUserHasBalance(amount float64) *entities.User {
 	user := &entities.User{
 		Username:     "test_user",
 		PasswordHash: "any",
@@ -120,6 +155,10 @@ func givenDepositRedirectUrl(redirectUrl string) {
 		Times(1)
 }
 
+func givenTransaction(transaction *entities.Transaction) {
+	database.DB.Create(transaction)
+}
+
 func expectTransactionEqual(t *testing.T, expected *entities.Transaction) {
 	var tx entities.Transaction
 	result := database.DB.Where("wallet_id = ?", expected.WalletID).First(&tx)
@@ -129,4 +168,20 @@ func expectTransactionEqual(t *testing.T, expected *entities.Transaction) {
 	assert.Equal(t, expected.Type, tx.Type)
 	assert.Equal(t, expected.Amount, tx.Amount)
 	assert.Equal(t, expected.PaymentMethod, tx.PaymentMethod)
+}
+
+func expectTransactionStatus(t *testing.T, transactionId string, transactionStatus entities.TransactionStatus) {
+	var tx entities.Transaction
+	result := database.DB.Where("uuid = ?", transactionId).First(&tx)
+
+	assert.Nil(t, result.Error)
+	assert.Equal(t, transactionStatus, tx.Status)
+}
+
+func expectBalance(t *testing.T, walletId uint, amount float64) {
+	var wallet entities.Wallet
+	result := database.DB.Where("id = ?", walletId).First(&wallet)
+
+	assert.Nil(t, result.Error)
+	assert.Equal(t, amount, wallet.Balance)
 }

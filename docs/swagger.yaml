@@ -1,15 +1,31 @@
 info:
   contact: {}
 paths:
+  /payments/confirm:
+    post:
+      consumes:
+      - application/json
+      description: Handles the confirmation callback from the Payment Service Provider
+        (PSP) after a successful deposit.
+      responses:
+        "200":
+          description: Deposit confirmed successfully
+          schema:
+            type: string
+      summary: Confirm a Deposit Transaction
+      tags:
+      - payments
   /payments/deposit:
     post:
       consumes:
       - application/json
       description: Creates a new PENDING transaction and redirects the user to the
         Payment Service Provider (PSP) for payment completion.
-      produces:
-      - application/json
-      responses: {}
+      responses:
+        "302":
+          description: Redirect to PSP payment page
+          schema:
+            type: object
       summary: Initiate a Deposit Transaction
       tags:
       - payments
