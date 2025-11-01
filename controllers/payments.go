@@ -38,6 +38,6 @@ func (ctrl *paymentController) Deposit(c *gin.Context) {
 		return
 	}
 
-	ctrl.paymentSrv.Deposit(&req)
-	c.JSON(http.StatusOK, "deposit response")
+	redirectUrl := ctrl.paymentSrv.Deposit(&req)
+	c.Redirect(http.StatusFound, redirectUrl)
 }
