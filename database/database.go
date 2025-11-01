@@ -14,18 +14,27 @@ var DB *gorm.DB
 
 func Connect() {
 	dsn := os.Getenv("DB_DSN")
+	DB = connect(dsn)
+}
 
-	var err error
-	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+func ConnectTestDB() {
+	dsn := "host=localhost user=test password=test dbname=banking_test_db port=5432 sslmode=disable"
+	DB = connect(dsn)
+}
+
+func connect(dsn string) *gorm.DB {
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 
 	if err != nil {
-		log.Warnf("Failed to connect to database: %v", err)
+		log.Panicf("Failed to connect to database: %v", err)
 	}
 
-	err = DB.AutoMigrate(&entities.User{}, &entities.Wallet{}, &entities.Transaction{}, &entities.BankAccount{})
+	err = db.AutoMigrate(&entities.User{}, &entities.Wallet{}, &entities.Transaction{}, &entities.BankAccount{})
 	if err != nil {
-		log.Warnf("Failed to run database migration: %v", err)
+		log.Panicf("Failed to run database migration: %v", err)
 	}
 
 	log.Info("Database connection established and migration complete!")
+
+	return db
 }
