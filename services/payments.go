@@ -1,29 +1,33 @@
 package services
 
 import (
-	"banking-system/database"
 	"banking-system/entities"
 	"banking-system/models"
+	"banking-system/repos"
 
 	"github.com/google/uuid"
 )
 
-//go:generate mockgen -source=promotions.go -destination=mock/prmootions.go
+//go:generate mockgen -source=payments.go -destination=mock/payments.go
 
 type PaymentService interface {
 	Deposit(req *models.DepositRequest)
 }
 
 type paymentService struct {
+	userRepo        repos.UserRepo
+	transactionRepo repos.TransactionRepo
 }
 
-func NewPaymentService() PaymentService {
-	return &paymentService{}
+func NewPaymentService(userRepo repos.UserRepo, transactionRepo repos.TransactionRepo) PaymentService {
+	return &paymentService{
+		userRepo:        userRepo,
+		transactionRepo: transactionRepo,
+	}
 }
 
-func (*paymentService) Deposit(req *models.DepositRequest) {
-	var user entities.User
-	database.DB.Preload("Wallet").First(&user, req.UserID)
+func (srv *paymentService) Deposit(req *models.DepositRequest) {
+	user, _ := srv.userRepo.Get(req.UserID)
 
 	tx := &entities.Transaction{
 		UUID:          uuid.New(),
@@ -33,6 +37,6 @@ func (*paymentService) Deposit(req *models.DepositRequest) {
 		Type:          entities.TransactionTypes.Deposit,
 		PaymentMethod: req.PaymentMethod,
 	}
-	database.DB.Create(tx)
 
+	srv.transactionRepo.Create(tx)
 }

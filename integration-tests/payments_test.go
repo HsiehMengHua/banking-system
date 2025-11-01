@@ -84,7 +84,7 @@ func givenUserBalance(amount float64) *entities.User {
 }
 
 func expectTransactionEqual(t *testing.T, expected *entities.Transaction) {
-	var tx *entities.Transaction
+	var tx entities.Transaction
 	result := database.DB.Where("wallet_id = ?", expected.WalletID).First(&tx)
 
 	assert.Nil(t, result.Error)
