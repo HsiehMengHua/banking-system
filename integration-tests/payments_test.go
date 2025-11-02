@@ -45,11 +45,11 @@ func TestDeposit(t *testing.T) {
 	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
 	sut := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), paymentServiceProviderMock))
 
+	txUUID := uuid.New()
 	const redirectUrl = "https://external.payment.page/payin"
-	givenDepositRedirectUrl(redirectUrl)
+	givenPayInResponse(txUUID.String(), redirectUrl)
 	user := givenUserHasBalance(0)
 
-	txUUID := uuid.New()
 	req, _ := json.Marshal(&models.DepositRequest{
 		UUID:          txUUID,
 		UserID:        user.ID,
@@ -68,6 +68,60 @@ func TestDeposit(t *testing.T) {
 	})
 	assert.Equal(t, http.StatusFound, res.Code)
 	assert.Equal(t, redirectUrl, res.Result().Header.Get("Location"))
+}
+
+func TestDeposit_DuplicateRequests(t *testing.T) {
+	truncateTables()
+	ctrl := gomock.NewController(t)
+	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+	paymentServiceProviderMock.EXPECT().PayIn().Return(&psp.DepositResponse{}, nil).Times(1)
+
+	sut := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), paymentServiceProviderMock))
+
+	user := givenUserHasBalance(0)
+
+	txUUID := uuid.New()
+	req, _ := json.Marshal(&models.DepositRequest{
+		UUID:          txUUID,
+		UserID:        user.ID,
+		Currency:      user.Wallet.Currency,
+		Amount:        100.00,
+		PaymentMethod: "AnyPay",
+	})
+
+	// Simulate 10 concurrent requests
+	concurrentRequests := 10
+	successCount := make(chan bool, concurrentRequests)
+	failureCount := make(chan bool, concurrentRequests)
+	var wg sync.WaitGroup
+	wg.Add(concurrentRequests)
+
+	for i := 0; i < concurrentRequests; i++ {
+		go func(index int) {
+			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					failureCount <- true
+					return
+				}
+			}()
+
+			res := postRequestWithHandler("/api/v1/payments/deposit", sut.Deposit, req)
+
+			if res.Code == http.StatusFound {
+				successCount <- true
+			} else {
+				failureCount <- true
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	close(successCount)
+	close(failureCount)
+
+	assert.Equal(t, 1, len(successCount), "Exactly one request should succeed.")
+	assert.Equal(t, concurrentRequests-1, len(failureCount), "The remaining requests should have failed.")
 }
 
 func TestDepositConfirm(t *testing.T) {
@@ -140,7 +194,7 @@ func TestDepositConfirm_ConcurrentRequests(t *testing.T) {
 		WalletID: user.Wallet.ID,
 	})
 
-	// Simulate 10 concurrent requests trying to confirm the same transaction
+	// Simulate 10 concurrent requests
 	concurrentRequests := 10
 	var wg sync.WaitGroup
 	wg.Add(concurrentRequests)
@@ -212,10 +266,10 @@ func givenUserHasBalance(amount float64) *entities.User {
 	return user
 }
 
-func givenDepositRedirectUrl(redirectUrl string) {
+func givenPayInResponse(txUUID string, redirectUrl string) {
 	paymentServiceProviderMock.EXPECT().PayIn().
 		Return(&psp.DepositResponse{
-			TransactionID: "tx_123456",
+			TransactionID: txUUID,
 			RedirectUrl:   redirectUrl,
 		}, nil).
 		Times(1)
