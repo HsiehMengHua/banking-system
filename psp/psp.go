@@ -8,6 +8,7 @@ import (
 
 type PaymentServiceProvider interface {
 	PayIn() (*PayInResponse, error)
+	PayOut() (*PayOutResponse, error)
 }
 
 type paymentServiceProvider struct {
@@ -23,5 +24,13 @@ func (*paymentServiceProvider) PayIn() (*PayInResponse, error) {
 	return &PayInResponse{
 		TransactionID: "<transaction_id>",
 		RedirectUrl:   "<redirect_url>",
+	}, nil
+}
+
+func (*paymentServiceProvider) PayOut() (*PayOutResponse, error) {
+	log.Debug("Simulate third party withdrawal process...")
+
+	return &PayOutResponse{
+		TransactionID: "<transaction_id>",
 	}, nil
 }

@@ -11,6 +11,7 @@ import (
 
 type PaymentController interface {
 	Deposit(c *gin.Context)
+	Withdraw(c *gin.Context)
 	Confirm(c *gin.Context)
 	Cancel(c *gin.Context)
 }
@@ -51,6 +52,34 @@ func (ctrl *paymentController) Deposit(c *gin.Context) {
 	}
 
 	c.Redirect(http.StatusFound, redirectUrl)
+}
+
+// @Summary      Initiate a Withdrawal Transaction
+// @Description  Creates a new PENDING withdrawal transaction, deducts the amount from wallet balance, and sends request to PSP for processing.
+// @Tags         payments
+// @Accept       json
+// @Param        request body models.WithdrawRequest true "Withdrawal initiation details"
+// @Response     200  {object}  object  "Withdrawal initiated successfully"
+// @Response     400  {object}  object  "Bad request - validation error or insufficient balance"
+// @Router       /payments/withdraw [post]
+func (ctrl *paymentController) Withdraw(c *gin.Context) {
+	var req models.WithdrawRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Invalid request body or missing field: " + err.Error(),
+		})
+		return
+	}
+
+	if err := ctrl.paymentSrv.Withdraw(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.Status(http.StatusOK)
 }
 
 // @Summary      Confirm a Deposit Transaction

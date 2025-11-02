@@ -20,6 +20,7 @@ const (
 
 type PaymentService interface {
 	Deposit(req *models.DepositRequest) (redirectUrl string, err error)
+	Withdraw(req *models.WithdrawRequest) error
 	Confirm(req *psp.ConfirmRequest) error
 	Cancel(req *psp.CancelRequest) error
 }
@@ -70,10 +71,46 @@ func (srv *paymentService) Deposit(req *models.DepositRequest) (redirectUrl stri
 	return res.RedirectUrl, nil
 }
 
+func (srv *paymentService) Withdraw(req *models.WithdrawRequest) error {
+	user, err := srv.userRepo.Get(req.UserID)
+	if err != nil {
+		log.Panicf("Failed to get user with ID %d: %v", req.UserID, err)
+	}
+
+	if user.Wallet.Balance < req.Amount {
+		return fmt.Errorf("insufficient balance: current balance %.2f, requested amount %.2f", user.Wallet.Balance, req.Amount)
+	}
+
+	tx := &entities.Transaction{
+		UUID:     req.UUID,
+		WalletID: user.Wallet.ID,
+		Amount:   req.Amount,
+		Status:   entities.TransactionStatuses.Pending,
+		Type:     entities.TransactionTypes.Withdrawal,
+		Wallet:   user.Wallet,
+	}
+
+	if err := srv.transactionRepo.Create(tx); err != nil {
+		log.Panicf("Failed to create transaction: %v", err)
+	}
+
+	user.Wallet.Balance -= req.Amount
+	if err := srv.userRepo.UpdateWallet(user); err != nil {
+		log.Panicf("Failed to update wallet for user ID %d: %v", req.UserID, err)
+	}
+
+	_, err = srv.paymentServiceProvider.PayOut()
+	if err != nil {
+		log.Panicf("Payment service provider error: %v", err)
+	}
+
+	return nil
+}
+
 func (srv *paymentService) Confirm(req *psp.ConfirmRequest) error {
 	tx, err := srv.transactionRepo.GetByUUID(uuid.MustParse(req.TransactionID))
 	if err != nil {
-		return fmt.Errorf("failed to get transaction: %w", err)
+		log.Panicf("Failed to get transaction: %v", err)
 	}
 
 	if tx.Status != entities.TransactionStatuses.Pending {
@@ -87,12 +124,12 @@ func (srv *paymentService) Confirm(req *psp.ConfirmRequest) error {
 	case entities.TransactionTypes.Deposit:
 		tx.Wallet.Balance += tx.Amount
 	default:
-		return fmt.Errorf("unknown transaction type: %s", tx.Type)
+		log.Panicf("Unknown transaction type: %s", tx.Type)
 	}
 
 	updated, err := srv.transactionRepo.UpdateConditional(tx, entities.TransactionStatuses.Pending)
 	if err != nil {
-		return fmt.Errorf("failed to update transaction: %w", err)
+		log.Panicf("Failed to update transaction: %v", err)
 	}
 
 	if !updated {
@@ -105,7 +142,7 @@ func (srv *paymentService) Confirm(req *psp.ConfirmRequest) error {
 func (srv *paymentService) Cancel(req *psp.CancelRequest) error {
 	tx, err := srv.transactionRepo.GetByUUID(uuid.MustParse(req.TransactionID))
 	if err != nil {
-		return fmt.Errorf("failed to get transaction: %w", err)
+		log.Panicf("Failed to get transaction: %v", err)
 	}
 
 	if tx.Status != entities.TransactionStatuses.Pending {
@@ -117,7 +154,7 @@ func (srv *paymentService) Cancel(req *psp.CancelRequest) error {
 
 	updated, err := srv.transactionRepo.UpdateConditional(tx, entities.TransactionStatuses.Pending)
 	if err != nil {
-		return fmt.Errorf("failed to update transaction: %w", err)
+		log.Panicf("Failed to update transaction: %v", err)
 	}
 
 	if !updated {

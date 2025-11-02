@@ -9,6 +9,7 @@ import (
 
 type UserRepo interface {
 	Get(id uint) (*entities.User, error)
+	UpdateWallet(user *entities.User) error
 }
 
 type userRepo struct {
@@ -22,4 +23,9 @@ func (*userRepo) Get(id uint) (*entities.User, error) {
 	var user entities.User
 	result := database.DB.Preload("Wallet").First(&user, id)
 	return &user, result.Error
+}
+
+func (*userRepo) UpdateWallet(user *entities.User) error {
+	result := database.DB.Save(&user.Wallet)
+	return result.Error
 }
