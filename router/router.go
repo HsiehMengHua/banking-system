@@ -25,6 +25,7 @@ func Setup() *gin.Engine {
 		payments := api.Group("/payments")
 		payments.POST("/deposit", ctrl.Deposit)
 		payments.POST("/withdraw", ctrl.Withdraw)
+		payments.POST("/transfer", ctrl.Transfer)
 		payments.POST("/confirm", middleware.VerifyPSPApiKey(), ctrl.Confirm)
 		payments.POST("/cancel", middleware.VerifyPSPApiKey(), ctrl.Cancel)
 	}

@@ -15,6 +15,7 @@ type TransactionRepo interface {
 	GetByUUID(uuid.UUID) (*entities.Transaction, error)
 	Update(tx *entities.Transaction) error
 	UpdateConditional(tx *entities.Transaction, expectedStatus entities.TransactionStatus) (bool, error)
+	CreateTransferTransactions(transferOutTx *entities.Transaction, transferInTx *entities.Transaction) error
 }
 
 type transactionRepo struct {
@@ -79,4 +80,31 @@ func (*transactionRepo) UpdateConditional(transaction *entities.Transaction, exp
 	})
 
 	return updated, err
+}
+
+func (*transactionRepo) CreateTransferTransactions(transferOutTx *entities.Transaction, transferInTx *entities.Transaction) error {
+	return database.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(transferOutTx).Error; err != nil {
+			return err
+		}
+
+		transferInTx.RelatedTransactionID = &transferOutTx.UUID
+		if err := tx.Create(transferInTx).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Model(transferOutTx).Update("RelatedTransactionID", transferInTx.UUID).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Save(&transferOutTx.Wallet).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Save(&transferInTx.Wallet).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
 }

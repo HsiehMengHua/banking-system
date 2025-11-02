@@ -12,6 +12,7 @@ import (
 type PaymentController interface {
 	Deposit(c *gin.Context)
 	Withdraw(c *gin.Context)
+	Transfer(c *gin.Context)
 	Confirm(c *gin.Context)
 	Cancel(c *gin.Context)
 }
@@ -31,7 +32,7 @@ func NewPaymentController(paymentSrv services.PaymentService) PaymentController 
 // @Tags         payments
 // @Accept       json
 // @Param        request body models.DepositRequest true "Deposit initiation details"
-// @Response     302  {object}  object  "Redirect to PSP payment page"
+// @Response     302  {object}  string  "Redirect to PSP payment page"
 // @Router       /payments/deposit [post]
 func (ctrl *paymentController) Deposit(c *gin.Context) {
 	var req models.DepositRequest
@@ -59,7 +60,7 @@ func (ctrl *paymentController) Deposit(c *gin.Context) {
 // @Tags         payments
 // @Accept       json
 // @Param        request body models.WithdrawRequest true "Withdrawal initiation details"
-// @Response     200  {object}  object  "Withdrawal initiated successfully"
+// @Response     200  {object}  nil  "Withdrawal initiated successfully"
 // @Response     400  {object}  object  "Bad request - validation error or insufficient balance"
 // @Router       /payments/withdraw [post]
 func (ctrl *paymentController) Withdraw(c *gin.Context) {
@@ -73,6 +74,34 @@ func (ctrl *paymentController) Withdraw(c *gin.Context) {
 	}
 
 	if err := ctrl.paymentSrv.Withdraw(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
+
+// @Summary      Transfer Funds Between Users
+// @Description  Transfers funds from one user's wallet to another user's wallet atomically.
+// @Tags         payments
+// @Accept       json
+// @Param        request body models.TransferRequest true "Transfer details"
+// @Response     200  {object}  nil  "Transfer completed successfully"
+// @Response     400  {object}  object  "Bad request - validation error or insufficient balance"
+// @Router       /payments/transfer [post]
+func (ctrl *paymentController) Transfer(c *gin.Context) {
+	var req models.TransferRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Invalid request body or missing field: " + err.Error(),
+		})
+		return
+	}
+
+	if err := ctrl.paymentSrv.Transfer(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": err.Error(),
 		})

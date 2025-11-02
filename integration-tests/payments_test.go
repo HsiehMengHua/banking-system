@@ -60,6 +60,7 @@ func TestDeposit(t *testing.T) {
 	res := postRequestWithHandler("/api/v1/payments/deposit", sut.Deposit, req)
 
 	expectTransactionEqual(t, &entities.Transaction{
+		UUID:          txUUID,
 		WalletID:      user.Wallet.ID,
 		Type:          entities.TransactionTypes.Deposit,
 		Status:        entities.TransactionStatuses.Pending,
@@ -332,6 +333,7 @@ func TestWithdraw_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, res.Code)
 	expectTransactionEqual(t, &entities.Transaction{
+		UUID:     txUUID,
 		WalletID: user.Wallet.ID,
 		Type:     entities.TransactionTypes.Withdrawal,
 		Status:   entities.TransactionStatuses.Pending,
@@ -490,6 +492,115 @@ func TestWithdrawCancel_ConcurrentRequests(t *testing.T) {
 	expectBalance(t, user.Wallet.ID, 110.00, "Balance should be refunded only once")
 }
 
+func TestTransfer_Success(t *testing.T) {
+	truncateTables()
+
+	sender := givenUserHasBalance(200.00)
+	recipient := givenUserHasBalance(50.00)
+
+	transferOutUUID := uuid.New()
+	req, _ := json.Marshal(&models.TransferRequest{
+		UUID:            transferOutUUID,
+		SenderUserID:    sender.ID,
+		RecipientUserID: recipient.ID,
+		Currency:        "TWD",
+		Amount:          10.00,
+	})
+
+	res := postRequest("/api/v1/payments/transfer", req)
+
+	assert.Equal(t, http.StatusOK, res.Code)
+	expectBalance(t, sender.Wallet.ID, 190.00)
+	expectBalance(t, recipient.Wallet.ID, 60.00)
+	expectTransferTransactionLinked(t, transferOutUUID)
+}
+
+func TestTransfer_InsufficientBalance(t *testing.T) {
+	truncateTables()
+
+	sender := givenUserHasBalance(30.00)
+	recipient := givenUserHasBalance(50.00)
+
+	txUUID := uuid.New()
+	req, _ := json.Marshal(&models.TransferRequest{
+		UUID:            txUUID,
+		SenderUserID:    sender.ID,
+		RecipientUserID: recipient.ID,
+		Currency:        "TWD",
+		Amount:          100.00, // More than sender's balance
+	})
+
+	res := postRequest("/api/v1/payments/transfer", req)
+
+	assert.Equal(t, http.StatusBadRequest, res.Code)
+	expectBalance(t, sender.Wallet.ID, 30.00, "Balance should remain unchanged")
+	expectBalance(t, recipient.Wallet.ID, 50.00, "Balance should remain unchanged")
+}
+
+func TestTransfer_SameUser(t *testing.T) {
+	truncateTables()
+
+	user := givenUserHasBalance(100.00)
+
+	txUUID := uuid.New()
+	req, _ := json.Marshal(&models.TransferRequest{
+		UUID:            txUUID,
+		SenderUserID:    user.ID,
+		RecipientUserID: user.ID, // Same user
+		Currency:        "TWD",
+		Amount:          50.00,
+	})
+
+	res := postRequest("/api/v1/payments/transfer", req)
+
+	assert.Equal(t, http.StatusBadRequest, res.Code)
+	expectBalance(t, user.Wallet.ID, 100.00, "Balance should remain unchanged")
+}
+
+func TestTransfer_BelowMinimum(t *testing.T) {
+	truncateTables()
+
+	sender := givenUserHasBalance(100.00)
+	recipient := givenUserHasBalance(50.00)
+
+	txUUID := uuid.New()
+	req, _ := json.Marshal(&models.TransferRequest{
+		UUID:            txUUID,
+		SenderUserID:    sender.ID,
+		RecipientUserID: recipient.ID,
+		Currency:        "TWD",
+		Amount:          0.50, // Below minimum
+	})
+
+	res := postRequest("/api/v1/payments/transfer", req)
+
+	assert.Equal(t, http.StatusBadRequest, res.Code)
+	expectBalance(t, sender.Wallet.ID, 100.00, "Balance should remain unchanged")
+	expectBalance(t, recipient.Wallet.ID, 50.00, "Balance should remain unchanged")
+}
+
+func TestTransfer_AboveMaximum(t *testing.T) {
+	truncateTables()
+
+	sender := givenUserHasBalance(200000.00)
+	recipient := givenUserHasBalance(50.00)
+
+	txUUID := uuid.New()
+	req, _ := json.Marshal(&models.TransferRequest{
+		UUID:            txUUID,
+		SenderUserID:    sender.ID,
+		RecipientUserID: recipient.ID,
+		Currency:        "TWD",
+		Amount:          150000.00, // Above maximum
+	})
+
+	res := postRequest("/api/v1/payments/transfer", req)
+
+	assert.Equal(t, http.StatusBadRequest, res.Code)
+	expectBalance(t, sender.Wallet.ID, 200000.00, "Balance should remain unchanged")
+	expectBalance(t, recipient.Wallet.ID, 50.00, "Balance should remain unchanged")
+}
+
 func truncateTables() {
 	// Disable foreign key checks
 	database.DB.Exec("SET session_replication_role = 'replica';")
@@ -541,7 +652,7 @@ func postRequestWithHandler(path string, handler func(c *gin.Context), body []by
 
 func givenUserHasBalance(amount float64) *entities.User {
 	user := &entities.User{
-		Username:     "test_user",
+		Username:     "test_user_" + uuid.NewString(),
 		PasswordHash: "any",
 		Wallet: entities.Wallet{
 			Balance:  amount,
@@ -574,14 +685,28 @@ func givenTransaction(transaction *entities.Transaction) {
 }
 
 func expectTransactionEqual(t *testing.T, expected *entities.Transaction) {
-	var tx entities.Transaction
-	result := database.DB.Where("wallet_id = ?", expected.WalletID).First(&tx)
+	var actual entities.Transaction
+	result := database.DB.First(&actual, expected.UUID)
 
 	assert.Nil(t, result.Error)
-	assert.Equal(t, expected.Status, tx.Status)
-	assert.Equal(t, expected.Type, tx.Type)
-	assert.Equal(t, expected.Amount, tx.Amount)
-	assert.Equal(t, expected.PaymentMethod, tx.PaymentMethod)
+	assert.Equal(t, expected.WalletID, actual.WalletID)
+	assert.Equal(t, expected.Status, actual.Status)
+	assert.Equal(t, expected.Type, actual.Type)
+	assert.Equal(t, expected.Amount, actual.Amount)
+	assert.Equal(t, expected.PaymentMethod, actual.PaymentMethod)
+}
+
+func expectTransferTransactionLinked(t *testing.T, transferOutUUID uuid.UUID) {
+	var actual entities.Transaction
+	result := database.DB.Preload("RelatedTransaction").First(&actual, transferOutUUID)
+
+	assert.Nil(t, result.Error)
+	assert.NotNil(t, actual.RelatedTransaction)
+	assert.Equal(t, actual.UUID.String(), actual.RelatedTransaction.RelatedTransactionID.String())
+	assert.Equal(t, actual.Status, actual.RelatedTransaction.Status)
+	assert.Equal(t, actual.Amount, actual.RelatedTransaction.Amount)
+	assert.Equal(t, entities.TransactionTypes.TransferOut, actual.Type)
+	assert.Equal(t, entities.TransactionTypes.TransferIn, actual.RelatedTransaction.Type)
 }
 
 func expectTransactionStatus(t *testing.T, transactionId string, transactionStatus entities.TransactionStatus) {

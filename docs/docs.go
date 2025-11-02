@@ -128,6 +128,40 @@ const docTemplate = `{
                     "302": {
                         "description": "Redirect to PSP payment page",
                         "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/payments/transfer": {
+            "post": {
+                "description": "Transfers funds from one user's wallet to another user's wallet atomically.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payments"
+                ],
+                "summary": "Transfer Funds Between Users",
+                "parameters": [
+                    {
+                        "description": "Transfer details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.TransferRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Transfer completed successfully"
+                    },
+                    "400": {
+                        "description": "Bad request - validation error or insufficient balance",
+                        "schema": {
                             "type": "object"
                         }
                     }
@@ -157,10 +191,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Withdrawal initiated successfully",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "description": "Withdrawal initiated successfully"
                     },
                     "400": {
                         "description": "Bad request - validation error or insufficient balance",
@@ -191,6 +222,32 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user_id": {
+                    "type": "integer"
+                },
+                "uuid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.TransferRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "currency",
+                "recipient_user_id",
+                "sender_user_id"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "recipient_user_id": {
+                    "type": "integer"
+                },
+                "sender_user_id": {
                     "type": "integer"
                 },
                 "uuid": {

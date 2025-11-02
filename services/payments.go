@@ -14,13 +14,16 @@ import (
 //go:generate mockgen -source=payments.go -destination=mock/payments.go
 
 const (
-	MIN_DEPOSIT_AMOUNT = 1.00
-	MAX_DEPOSIT_AMOUNT = 100000.00
+	MIN_DEPOSIT_AMOUNT  = 1.00
+	MAX_DEPOSIT_AMOUNT  = 100000.00
+	MIN_TRANSFER_AMOUNT = 1.00
+	MAX_TRANSFER_AMOUNT = 100000.00
 )
 
 type PaymentService interface {
 	Deposit(req *models.DepositRequest) (redirectUrl string, err error)
 	Withdraw(req *models.WithdrawRequest) error
+	Transfer(req *models.TransferRequest) error
 	Confirm(req *psp.ConfirmRequest) error
 	Cancel(req *psp.CancelRequest) error
 }
@@ -87,7 +90,7 @@ func (srv *paymentService) Withdraw(req *models.WithdrawRequest) error {
 		Amount:   req.Amount,
 		Status:   entities.TransactionStatuses.Pending,
 		Type:     entities.TransactionTypes.Withdrawal,
-		Wallet:   user.Wallet,
+		Wallet:   &user.Wallet,
 	}
 
 	if err := srv.transactionRepo.Create(tx); err != nil {
@@ -102,6 +105,61 @@ func (srv *paymentService) Withdraw(req *models.WithdrawRequest) error {
 	_, err = srv.paymentServiceProvider.PayOut()
 	if err != nil {
 		log.Panicf("Payment service provider error: %v", err)
+	}
+
+	return nil
+}
+
+func (srv *paymentService) Transfer(req *models.TransferRequest) error {
+	if req.Amount < MIN_TRANSFER_AMOUNT {
+		return fmt.Errorf("transfer amount %.2f is below minimum allowed amount %.2f", req.Amount, MIN_TRANSFER_AMOUNT)
+	}
+
+	if req.Amount > MAX_TRANSFER_AMOUNT {
+		return fmt.Errorf("transfer amount %.2f exceeds maximum allowed amount %.2f", req.Amount, MAX_TRANSFER_AMOUNT)
+	}
+
+	if req.SenderUserID == req.RecipientUserID {
+		return fmt.Errorf("cannot transfer to the same user")
+	}
+
+	sender, err := srv.userRepo.Get(req.SenderUserID)
+	if err != nil {
+		log.Panicf("Failed to get sender user: %v", err)
+	}
+
+	recipient, err := srv.userRepo.Get(req.RecipientUserID)
+	if err != nil {
+		log.Panicf("Failed to get recipient user: %v", err)
+	}
+
+	if sender.Wallet.Balance < req.Amount {
+		return fmt.Errorf("insufficient balance: current balance %.2f, requested amount %.2f", sender.Wallet.Balance, req.Amount)
+	}
+
+	transferOutTx := &entities.Transaction{
+		UUID:     req.UUID,
+		WalletID: sender.Wallet.ID,
+		Amount:   req.Amount,
+		Status:   entities.TransactionStatuses.Completed,
+		Type:     entities.TransactionTypes.TransferOut,
+		Wallet:   &sender.Wallet,
+	}
+
+	transferInTx := &entities.Transaction{
+		UUID:     uuid.New(),
+		WalletID: recipient.Wallet.ID,
+		Amount:   req.Amount,
+		Status:   entities.TransactionStatuses.Completed,
+		Type:     entities.TransactionTypes.TransferIn,
+		Wallet:   &recipient.Wallet,
+	}
+
+	sender.Wallet.Balance -= req.Amount
+	recipient.Wallet.Balance += req.Amount
+
+	if err := srv.transactionRepo.CreateTransferTransactions(transferOutTx, transferInTx); err != nil {
+		log.Panicf("Failed to create transfer: %v", err)
 	}
 
 	return nil
