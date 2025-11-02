@@ -45,6 +45,17 @@ const docTemplate = `{
                     "payments"
                 ],
                 "summary": "Initiate a Deposit Transaction",
+                "parameters": [
+                    {
+                        "description": "Deposit initiation details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.DepositRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "302": {
                         "description": "Redirect to PSP payment page",
@@ -52,6 +63,33 @@ const docTemplate = `{
                             "type": "object"
                         }
                     }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "models.DepositRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "currency",
+                "user_id"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "payment_method": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
+                "uuid": {
+                    "type": "string"
                 }
             }
         }

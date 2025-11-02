@@ -35,7 +35,7 @@ func (srv *paymentService) Deposit(req *models.DepositRequest) (redirectUrl stri
 	user, _ := srv.userRepo.Get(req.UserID)
 
 	tx := &entities.Transaction{
-		UUID:          uuid.New(),
+		UUID:          req.UUID,
 		WalletID:      user.Wallet.ID,
 		Amount:        req.Amount,
 		Status:        entities.TransactionStatuses.Pending,

@@ -19,8 +19,9 @@ func Setup() *gin.Engine {
 
 	ctrl := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), psp.NewPaymentServiceProvider()))
 
+	api := r.Group("/api/v1")
 	{
-		payments := r.Group("/payments")
+		payments := api.Group("/payments")
 		payments.POST("/deposit", ctrl.Deposit)
 		payments.POST("/confirm", ctrl.Confirm)
 	}

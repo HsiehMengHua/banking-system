@@ -29,6 +29,7 @@ func NewPaymentController(paymentSrv services.PaymentService) PaymentController 
 // @Description  Creates a new PENDING transaction and redirects the user to the Payment Service Provider (PSP) for payment completion.
 // @Tags         payments
 // @Accept       json
+// @Param        request body models.DepositRequest true "Deposit initiation details"
 // @Response     302  {object}  object  "Redirect to PSP payment page"
 // @Router       /payments/deposit [post]
 func (ctrl *paymentController) Deposit(c *gin.Context) {

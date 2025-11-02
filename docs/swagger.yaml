@@ -1,3 +1,21 @@
+definitions:
+  models.DepositRequest:
+    properties:
+      amount:
+        type: number
+      currency:
+        type: string
+      payment_method:
+        type: string
+      user_id:
+        type: integer
+      uuid:
+        type: string
+    required:
+    - amount
+    - currency
+    - user_id
+    type: object
 info:
   contact: {}
 paths:
@@ -21,6 +39,13 @@ paths:
       - application/json
       description: Creates a new PENDING transaction and redirects the user to the
         Payment Service Provider (PSP) for payment completion.
+      parameters:
+      - description: Deposit initiation details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.DepositRequest'
       responses:
         "302":
           description: Redirect to PSP payment page

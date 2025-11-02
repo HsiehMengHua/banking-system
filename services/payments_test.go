@@ -12,6 +12,7 @@ import (
 	repoMock "banking-system/repos/mock"
 
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 )
 
 var (
@@ -27,6 +28,7 @@ func TestValidDeposit(t *testing.T) {
 	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
 
 	req := &models.DepositRequest{
+		UUID:          uuid.New(),
 		UserID:        1,
 		Currency:      "TWD",
 		Amount:        100.00,
@@ -48,6 +50,7 @@ func TestDeposit_PspRespondsError(t *testing.T) {
 	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
 
 	req := &models.DepositRequest{
+		UUID:          uuid.New(),
 		UserID:        1,
 		Currency:      "TWD",
 		Amount:        100.00,

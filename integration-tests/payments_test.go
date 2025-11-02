@@ -11,7 +11,6 @@ import (
 	"banking-system/services"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -29,7 +28,6 @@ import (
 var r *gin.Engine
 
 func TestMain(m *testing.M) {
-	fmt.Println("TestMain is called")
 	r = router.Setup()
 	database.ConnectTestDB()
 	exitCode := m.Run()
@@ -50,13 +48,15 @@ func TestDeposit(t *testing.T) {
 	givenDepositRedirectUrl(redirectUrl)
 	user := givenUserHasBalance(0)
 
+	txUUID := uuid.New()
 	req, _ := json.Marshal(&models.DepositRequest{
+		UUID:          txUUID,
 		UserID:        user.ID,
 		Currency:      user.Wallet.Currency,
 		Amount:        100.00,
 		PaymentMethod: "AnyPay",
 	})
-	res := postRequestWithHandler("/payments/deposit", sut.Deposit, req)
+	res := postRequestWithHandler("/api/v1/payments/deposit", sut.Deposit, req)
 
 	expectTransactionEqual(t, &entities.Transaction{
 		WalletID:      user.Wallet.ID,
@@ -86,7 +86,7 @@ func TestDepositConfirm(t *testing.T) {
 	})
 
 	body, _ := json.Marshal(req)
-	res := postRequest("/payments/confirm", body)
+	res := postRequest("/api/v1/payments/confirm", body)
 
 	assert.Equal(t, http.StatusOK, res.Code)
 	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Completed)
