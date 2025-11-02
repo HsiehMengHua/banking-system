@@ -423,6 +423,77 @@ func TestWithdraw_DuplicateRequests(t *testing.T) {
 	expectBalance(t, user.Wallet.ID, 150.00) // Balance should be deducted only once
 }
 
+func TestWithdrawCancel(t *testing.T) {
+	truncateTables()
+
+	req := &psp.CancelRequest{
+		TransactionID: uuid.NewString(),
+	}
+
+	user := givenUserHasBalance(100.00)
+	givenTransaction(&entities.Transaction{
+		UUID:     uuid.MustParse(req.TransactionID),
+		Type:     entities.TransactionTypes.Withdrawal,
+		Status:   entities.TransactionStatuses.Pending,
+		Amount:   10.00,
+		WalletID: user.Wallet.ID,
+	})
+
+	body, _ := json.Marshal(req)
+	res := postRequestWithPSPAuth("/api/v1/payments/cancel", body)
+
+	assert.Equal(t, http.StatusOK, res.Code)
+	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Canceled)
+	expectBalance(t, user.Wallet.ID, 110.00, "Balance should be refunded back")
+}
+
+func TestWithdrawCancel_ConcurrentRequests(t *testing.T) {
+	truncateTables()
+
+	req := &psp.CancelRequest{
+		TransactionID: uuid.NewString(),
+	}
+	body, _ := json.Marshal(req)
+
+	user := givenUserHasBalance(100.00)
+	givenTransaction(&entities.Transaction{
+		UUID:     uuid.MustParse(req.TransactionID),
+		Type:     entities.TransactionTypes.Withdrawal,
+		Status:   entities.TransactionStatuses.Pending,
+		Amount:   10.00,
+		WalletID: user.Wallet.ID,
+	})
+
+	// Simulate 10 concurrent requests
+	concurrentRequests := 10
+	var wg sync.WaitGroup
+	wg.Add(concurrentRequests)
+	successCount := make(chan bool, concurrentRequests)
+	failureCount := make(chan bool, concurrentRequests)
+
+	for i := range concurrentRequests {
+		go func(index int) {
+			defer wg.Done()
+
+			res := postRequestWithPSPAuth("/api/v1/payments/cancel", body)
+
+			if res.Code == http.StatusOK {
+				successCount <- true
+			} else {
+				failureCount <- true
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	close(successCount)
+	close(failureCount)
+
+	assert.Equal(t, concurrentRequests, len(successCount), "All requests should succeed.")
+	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Canceled)
+	expectBalance(t, user.Wallet.ID, 110.00, "Balance should be refunded only once")
+}
+
 func truncateTables() {
 	// Disable foreign key checks
 	database.DB.Exec("SET session_replication_role = 'replica';")
@@ -525,10 +596,10 @@ func expectTransactionStatus(t *testing.T, transactionId string, transactionStat
 	assert.Equal(t, transactionStatus, tx.Status)
 }
 
-func expectBalance(t *testing.T, walletId uint, amount float64) {
+func expectBalance(t *testing.T, walletId uint, amount float64, msgAndArgs ...interface{}) {
 	var wallet entities.Wallet
 	result := database.DB.Where("id = ?", walletId).First(&wallet)
 
 	assert.Nil(t, result.Error)
-	assert.Equal(t, amount, wallet.Balance)
+	assert.Equal(t, amount, wallet.Balance, msgAndArgs...)
 }

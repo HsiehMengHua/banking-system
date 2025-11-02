@@ -152,6 +152,14 @@ func (srv *paymentService) Cancel(req *psp.CancelRequest) error {
 
 	tx.Status = entities.TransactionStatuses.Canceled
 
+	switch tx.Type {
+	case entities.TransactionTypes.Withdrawal:
+		tx.Wallet.Balance += tx.Amount
+	case entities.TransactionTypes.Deposit:
+	default:
+		log.Panicf("Unknown transaction type: %s", tx.Type)
+	}
+
 	updated, err := srv.transactionRepo.UpdateConditional(tx, entities.TransactionStatuses.Pending)
 	if err != nil {
 		log.Panicf("Failed to update transaction: %v", err)
