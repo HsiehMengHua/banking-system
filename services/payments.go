@@ -43,11 +43,13 @@ func (srv *paymentService) Deposit(req *models.DepositRequest) (redirectUrl stri
 		PaymentMethod: req.PaymentMethod,
 	}
 
-	srv.transactionRepo.Create(tx)
-
 	res, err := srv.paymentServiceProvider.PayIn()
 	if err != nil {
 		log.Panicf("Payment service provider '%s' error: %v", req.PaymentMethod, err)
+	}
+
+	if err := srv.transactionRepo.Create(tx); err != nil {
+		log.Panicf("Failed to create transaction: %v", err)
 	}
 
 	return res.RedirectUrl

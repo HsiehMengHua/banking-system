@@ -24,7 +24,9 @@ func NewTransactionRepo() TransactionRepo {
 }
 
 func (*transactionRepo) Create(transaction *entities.Transaction) error {
-	database.DB.Create(&transaction)
+	if err := database.DB.Create(&transaction).Error; err != nil {
+		return err
+	}
 	return nil
 }
 
