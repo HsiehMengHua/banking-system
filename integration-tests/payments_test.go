@@ -686,7 +686,7 @@ func postRequestWithHandler(path string, handler func(c *gin.Context), body []by
 
 func givenUserHasBalance(amount float64) *entities.User {
 	user := &entities.User{
-		Username:     "test_user_" + uuid.NewString(),
+		Username:     "usr_" + uuid.NewString()[:8],
 		PasswordHash: "any",
 		Wallet: entities.Wallet{
 			Balance:  amount,

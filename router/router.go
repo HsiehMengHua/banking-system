@@ -18,16 +18,20 @@ func Setup() *gin.Engine {
 	docs.SwaggerInfo.BasePath = "/api/v1"
 	r.StaticFile("/version", "./version.txt")
 
-	ctrl := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), psp.NewPaymentServiceProvider()))
+	userRepo := repos.NewUserRepo()
+	paymentCtrl := controllers.NewPaymentController(services.NewPaymentService(userRepo, repos.NewTransactionRepo(), psp.NewPaymentServiceProvider()))
+	userCtrl := controllers.NewUserController(services.NewUserService(userRepo))
 
 	api := r.Group("/api/v1")
 	{
+		api.POST("/user", userCtrl.Register)
+
 		payments := api.Group("/payments")
-		payments.POST("/deposit", ctrl.Deposit)
-		payments.POST("/withdraw", ctrl.Withdraw)
-		payments.POST("/transfer", ctrl.Transfer)
-		payments.POST("/confirm", middleware.VerifyPSPApiKey(), ctrl.Confirm)
-		payments.POST("/cancel", middleware.VerifyPSPApiKey(), ctrl.Cancel)
+		payments.POST("/deposit", paymentCtrl.Deposit)
+		payments.POST("/withdraw", paymentCtrl.Withdraw)
+		payments.POST("/transfer", paymentCtrl.Transfer)
+		payments.POST("/confirm", middleware.VerifyPSPApiKey(), paymentCtrl.Confirm)
+		payments.POST("/cancel", middleware.VerifyPSPApiKey(), paymentCtrl.Cancel)
 	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))

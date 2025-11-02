@@ -8,6 +8,7 @@ import (
 //go:generate mockgen -source=userRepo.go -destination=mock/userRepo.go
 
 type UserRepo interface {
+	Create(user *entities.User) error
 	Get(id uint) (*entities.User, error)
 	UpdateWallet(user *entities.User) error
 }
@@ -17,6 +18,11 @@ type userRepo struct {
 
 func NewUserRepo() UserRepo {
 	return &userRepo{}
+}
+
+func (*userRepo) Create(user *entities.User) error {
+	result := database.DB.Create(user)
+	return result.Error
 }
 
 func (*userRepo) Get(id uint) (*entities.User, error) {
