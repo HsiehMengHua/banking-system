@@ -16,6 +16,22 @@ definitions:
     - currency
     - user_id
     type: object
+  models.RegisterRequest:
+    properties:
+      name:
+        maxLength: 100
+        type: string
+      password:
+        maxLength: 20
+        type: string
+      username:
+        maxLength: 20
+        type: string
+    required:
+    - name
+    - password
+    - username
+    type: object
   models.TransferRequest:
     properties:
       amount:
@@ -191,4 +207,27 @@ paths:
       summary: Initiate a Withdrawal Transaction
       tags:
       - payments
+  /user:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user with hashed password and an associated wallet
+        with initial balance of 0
+      parameters:
+      - description: User registration details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.RegisterRequest'
+      responses:
+        "201":
+          description: User created successfully
+        "400":
+          description: Bad request - validation error or user already exists
+          schema:
+            type: object
+      summary: Register a new user
+      tags:
+      - users
 swagger: "2.0"
