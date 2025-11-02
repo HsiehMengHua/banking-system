@@ -16,6 +16,11 @@ definitions:
     - currency
     - user_id
     type: object
+  psp.CancelRequest:
+    properties:
+      transactionID:
+        type: string
+    type: object
   psp.PayInResponse:
     properties:
       redirectUrl:
@@ -26,6 +31,27 @@ definitions:
 info:
   contact: {}
 paths:
+  /payments/cancel:
+    post:
+      consumes:
+      - application/json
+      description: Handles the cancellation callback from the Payment Service Provider
+        (PSP) when a deposit is cancelled.
+      parameters:
+      - description: Cancellation callback from PSP
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/psp.CancelRequest'
+      responses:
+        "200":
+          description: Deposit cancelled successfully
+          schema:
+            type: string
+      summary: Cancel a Deposit Transaction
+      tags:
+      - payments
   /payments/confirm:
     post:
       consumes:

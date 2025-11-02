@@ -20,7 +20,8 @@ const (
 
 type PaymentService interface {
 	Deposit(req *models.DepositRequest) (redirectUrl string, err error)
-	Confirm(req *psp.ConfirmRequest)
+	Confirm(req *psp.ConfirmRequest) error
+	Cancel(req *psp.CancelRequest) error
 }
 
 type paymentService struct {
@@ -69,15 +70,15 @@ func (srv *paymentService) Deposit(req *models.DepositRequest) (redirectUrl stri
 	return res.RedirectUrl, nil
 }
 
-func (srv *paymentService) Confirm(req *psp.ConfirmRequest) {
+func (srv *paymentService) Confirm(req *psp.ConfirmRequest) error {
 	tx, err := srv.transactionRepo.GetByUUID(uuid.MustParse(req.TransactionID))
 	if err != nil {
-		log.Panicf("Failed to get transaction: %v", err)
+		return fmt.Errorf("failed to get transaction: %w", err)
 	}
 
 	if tx.Status != entities.TransactionStatuses.Pending {
 		log.Infof("Transaction '%s' already processed with status: %s", req.TransactionID, tx.Status)
-		return
+		return nil
 	}
 
 	tx.Status = entities.TransactionStatuses.Completed
@@ -86,15 +87,42 @@ func (srv *paymentService) Confirm(req *psp.ConfirmRequest) {
 	case entities.TransactionTypes.Deposit:
 		tx.Wallet.Balance += tx.Amount
 	default:
-		log.Panicf("Unknown transaction type: %s", tx.Type)
+		return fmt.Errorf("unknown transaction type: %s", tx.Type)
 	}
 
 	updated, err := srv.transactionRepo.UpdateConditional(tx, entities.TransactionStatuses.Pending)
 	if err != nil {
-		log.Panicf("Failed to update transaction: %v", err)
+		return fmt.Errorf("failed to update transaction: %w", err)
 	}
 
 	if !updated {
 		log.Infof("Transaction '%s' was already processed by another request", req.TransactionID)
 	}
+
+	return nil
+}
+
+func (srv *paymentService) Cancel(req *psp.CancelRequest) error {
+	tx, err := srv.transactionRepo.GetByUUID(uuid.MustParse(req.TransactionID))
+	if err != nil {
+		return fmt.Errorf("failed to get transaction: %w", err)
+	}
+
+	if tx.Status != entities.TransactionStatuses.Pending {
+		log.Infof("Transaction '%s' already processed with status: %s", req.TransactionID, tx.Status)
+		return nil
+	}
+
+	tx.Status = entities.TransactionStatuses.Canceled
+
+	updated, err := srv.transactionRepo.UpdateConditional(tx, entities.TransactionStatuses.Pending)
+	if err != nil {
+		return fmt.Errorf("failed to update transaction: %w", err)
+	}
+
+	if !updated {
+		log.Infof("Transaction '%s' was already processed by another request", req.TransactionID)
+	}
+
+	return nil
 }

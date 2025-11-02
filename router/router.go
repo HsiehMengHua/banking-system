@@ -24,6 +24,7 @@ func Setup() *gin.Engine {
 		payments := api.Group("/payments")
 		payments.POST("/deposit", ctrl.Deposit)
 		payments.POST("/confirm", ctrl.Confirm)
+		payments.POST("/cancel", ctrl.Cancel)
 	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))

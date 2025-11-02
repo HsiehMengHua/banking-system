@@ -4,6 +4,37 @@
         "contact": {}
     },
     "paths": {
+        "/payments/cancel": {
+            "post": {
+                "description": "Handles the cancellation callback from the Payment Service Provider (PSP) when a deposit is cancelled.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payments"
+                ],
+                "summary": "Cancel a Deposit Transaction",
+                "parameters": [
+                    {
+                        "description": "Cancellation callback from PSP",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/psp.CancelRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deposit cancelled successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/payments/confirm": {
             "post": {
                 "description": "Handles the confirmation callback from the Payment Service Provider (PSP) after a successful deposit.",
@@ -89,6 +120,14 @@
                     "type": "integer"
                 },
                 "uuid": {
+                    "type": "string"
+                }
+            }
+        },
+        "psp.CancelRequest": {
+            "type": "object",
+            "properties": {
+                "transactionID": {
                     "type": "string"
                 }
             }

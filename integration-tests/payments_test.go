@@ -215,6 +215,58 @@ func TestDepositConfirm_ConcurrentRequests(t *testing.T) {
 	expectBalance(t, user.Wallet.ID, 150.00)
 }
 
+func TestDepositCancel(t *testing.T) {
+	truncateTables()
+
+	req := &psp.CancelRequest{
+		TransactionID: "a05aa863-d9ab-42e6-8122-f76e43edaa22",
+	}
+
+	user := givenUserHasBalance(100)
+	givenTransaction(&entities.Transaction{
+		UUID:     uuid.MustParse(req.TransactionID),
+		Type:     entities.TransactionTypes.Deposit,
+		Status:   entities.TransactionStatuses.Pending,
+		Amount:   50.00,
+		WalletID: user.Wallet.ID,
+	})
+
+	body, _ := json.Marshal(req)
+	res := postRequest("/api/v1/payments/cancel", body)
+
+	assert.Equal(t, http.StatusOK, res.Code)
+	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Canceled)
+	expectBalance(t, user.Wallet.ID, 100.00) // Balance should not change
+}
+
+func TestDepositCancel_DuplicateRequest(t *testing.T) {
+	truncateTables()
+
+	req := &psp.CancelRequest{
+		TransactionID: "b05aa863-d9ab-42e6-8122-f76e43edaa23",
+	}
+
+	user := givenUserHasBalance(100)
+	givenTransaction(&entities.Transaction{
+		UUID:     uuid.MustParse(req.TransactionID),
+		Type:     entities.TransactionTypes.Deposit,
+		Status:   entities.TransactionStatuses.Pending,
+		Amount:   50.00,
+		WalletID: user.Wallet.ID,
+	})
+
+	body, _ := json.Marshal(req)
+	firstResp := postRequest("/api/v1/payments/cancel", body)
+	assert.Equal(t, http.StatusOK, firstResp.Code)
+	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Canceled)
+	expectBalance(t, user.Wallet.ID, 100.00)
+
+	secondResp := postRequest("/api/v1/payments/cancel", body)
+	assert.Equal(t, http.StatusOK, secondResp.Code)
+	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Canceled)
+	expectBalance(t, user.Wallet.ID, 100.00) // Balance should still be unchanged
+}
+
 func truncateTables() {
 	// Disable foreign key checks
 	database.DB.Exec("SET session_replication_role = 'replica';")

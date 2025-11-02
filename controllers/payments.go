@@ -70,7 +70,39 @@ func (ctrl *paymentController) Confirm(c *gin.Context) {
 		return
 	}
 
-	ctrl.paymentSrv.Confirm(&req)
+	if err := ctrl.paymentSrv.Confirm(&req); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+
 	c.Status(http.StatusOK)
 }
-func (ctrl *paymentController) Cancel(c *gin.Context) {}
+
+// @Summary      Cancel a Deposit Transaction
+// @Description  Handles the cancellation callback from the Payment Service Provider (PSP) when a deposit is cancelled.
+// @Tags         payments
+// @Accept       json
+// @Param        request body psp.CancelRequest true "Cancellation callback from PSP"
+// @Response     200  {string}  string	"Deposit cancelled successfully"
+// @Router       /payments/cancel [post]
+func (ctrl *paymentController) Cancel(c *gin.Context) {
+	var req psp.CancelRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Invalid request body or missing field: " + err.Error(),
+		})
+		return
+	}
+
+	if err := ctrl.paymentSrv.Cancel(&req); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
