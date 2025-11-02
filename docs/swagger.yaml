@@ -16,6 +16,13 @@ definitions:
     - currency
     - user_id
     type: object
+  psp.PayInResponse:
+    properties:
+      redirectUrl:
+        type: string
+      transactionID:
+        type: string
+    type: object
 info:
   contact: {}
 paths:
@@ -25,6 +32,13 @@ paths:
       - application/json
       description: Handles the confirmation callback from the Payment Service Provider
         (PSP) after a successful deposit.
+      parameters:
+      - description: Confirmation callback from PSP
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/psp.PayInResponse'
       responses:
         "200":
           description: Deposit confirmed successfully

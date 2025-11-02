@@ -57,6 +57,7 @@ func (ctrl *paymentController) Deposit(c *gin.Context) {
 // @Description  Handles the confirmation callback from the Payment Service Provider (PSP) after a successful deposit.
 // @Tags         payments
 // @Accept       json
+// @Param        request body psp.PayInResponse true "Confirmation callback from PSP"
 // @Response     200  {string}  string	"Deposit confirmed successfully"
 // @Router       /payments/confirm [post]
 func (ctrl *paymentController) Confirm(c *gin.Context) {

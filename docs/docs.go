@@ -25,6 +25,17 @@ const docTemplate = `{
                     "payments"
                 ],
                 "summary": "Confirm a Deposit Transaction",
+                "parameters": [
+                    {
+                        "description": "Confirmation callback from PSP",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/psp.PayInResponse"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Deposit confirmed successfully",
@@ -89,6 +100,17 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "uuid": {
+                    "type": "string"
+                }
+            }
+        },
+        "psp.PayInResponse": {
+            "type": "object",
+            "properties": {
+                "redirectUrl": {
+                    "type": "string"
+                },
+                "transactionID": {
                     "type": "string"
                 }
             }
