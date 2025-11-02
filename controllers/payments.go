@@ -57,8 +57,10 @@ func (ctrl *paymentController) Deposit(c *gin.Context) {
 // @Description  Handles the confirmation callback from the Payment Service Provider (PSP) after a successful deposit.
 // @Tags         payments
 // @Accept       json
+// @Param        X-PSP-API-Key header string true "PSP API Key"
 // @Param        request body psp.PayInResponse true "Confirmation callback from PSP"
 // @Response     200  {string}  string	"Deposit confirmed successfully"
+// @Response     401  {object}  object	"Unauthorized - Invalid API key"
 // @Router       /payments/confirm [post]
 func (ctrl *paymentController) Confirm(c *gin.Context) {
 	var req psp.ConfirmRequest
@@ -84,8 +86,10 @@ func (ctrl *paymentController) Confirm(c *gin.Context) {
 // @Description  Handles the cancellation callback from the Payment Service Provider (PSP) when a deposit is cancelled.
 // @Tags         payments
 // @Accept       json
+// @Param        X-PSP-API-Key header string true "PSP API Key"
 // @Param        request body psp.CancelRequest true "Cancellation callback from PSP"
 // @Response     200  {string}  string	"Deposit cancelled successfully"
+// @Response     401  {object}  object	"Unauthorized - Invalid API key"
 // @Router       /payments/cancel [post]
 func (ctrl *paymentController) Cancel(c *gin.Context) {
 	var req psp.CancelRequest

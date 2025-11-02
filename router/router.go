@@ -3,6 +3,7 @@ package router
 import (
 	"banking-system/controllers"
 	"banking-system/docs"
+	"banking-system/middleware"
 	"banking-system/psp"
 	"banking-system/repos"
 	"banking-system/services"
@@ -23,8 +24,8 @@ func Setup() *gin.Engine {
 	{
 		payments := api.Group("/payments")
 		payments.POST("/deposit", ctrl.Deposit)
-		payments.POST("/confirm", ctrl.Confirm)
-		payments.POST("/cancel", ctrl.Cancel)
+		payments.POST("/confirm", middleware.VerifyPSPApiKey(), ctrl.Confirm)
+		payments.POST("/cancel", middleware.VerifyPSPApiKey(), ctrl.Cancel)
 	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))

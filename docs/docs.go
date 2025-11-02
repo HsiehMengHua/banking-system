@@ -27,6 +27,13 @@ const docTemplate = `{
                 "summary": "Cancel a Deposit Transaction",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "PSP API Key",
+                        "name": "X-PSP-API-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
                         "description": "Cancellation callback from PSP",
                         "name": "request",
                         "in": "body",
@@ -41,6 +48,12 @@ const docTemplate = `{
                         "description": "Deposit cancelled successfully",
                         "schema": {
                             "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid API key",
+                        "schema": {
+                            "type": "object"
                         }
                     }
                 }
@@ -58,6 +71,13 @@ const docTemplate = `{
                 "summary": "Confirm a Deposit Transaction",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "PSP API Key",
+                        "name": "X-PSP-API-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
                         "description": "Confirmation callback from PSP",
                         "name": "request",
                         "in": "body",
@@ -72,6 +92,12 @@ const docTemplate = `{
                         "description": "Deposit confirmed successfully",
                         "schema": {
                             "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid API key",
+                        "schema": {
+                            "type": "object"
                         }
                     }
                 }

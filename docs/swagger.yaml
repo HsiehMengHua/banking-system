@@ -38,6 +38,11 @@ paths:
       description: Handles the cancellation callback from the Payment Service Provider
         (PSP) when a deposit is cancelled.
       parameters:
+      - description: PSP API Key
+        in: header
+        name: X-PSP-API-Key
+        required: true
+        type: string
       - description: Cancellation callback from PSP
         in: body
         name: request
@@ -49,6 +54,10 @@ paths:
           description: Deposit cancelled successfully
           schema:
             type: string
+        "401":
+          description: Unauthorized - Invalid API key
+          schema:
+            type: object
       summary: Cancel a Deposit Transaction
       tags:
       - payments
@@ -59,6 +68,11 @@ paths:
       description: Handles the confirmation callback from the Payment Service Provider
         (PSP) after a successful deposit.
       parameters:
+      - description: PSP API Key
+        in: header
+        name: X-PSP-API-Key
+        required: true
+        type: string
       - description: Confirmation callback from PSP
         in: body
         name: request
@@ -70,6 +84,10 @@ paths:
           description: Deposit confirmed successfully
           schema:
             type: string
+        "401":
+          description: Unauthorized - Invalid API key
+          schema:
+            type: object
       summary: Confirm a Deposit Transaction
       tags:
       - payments

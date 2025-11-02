@@ -143,7 +143,7 @@ func TestDepositConfirm(t *testing.T) {
 	})
 
 	body, _ := json.Marshal(req)
-	res := postRequest("/api/v1/payments/confirm", body)
+	res := postRequestWithPSPAuth("/api/v1/payments/confirm", body)
 
 	assert.Equal(t, http.StatusOK, res.Code)
 	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Completed)
@@ -168,12 +168,12 @@ func TestDepositConfirm_DuplicateRequest(t *testing.T) {
 	})
 
 	body, _ := json.Marshal(req)
-	firstResp := postRequest("/api/v1/payments/confirm", body)
+	firstResp := postRequestWithPSPAuth("/api/v1/payments/confirm", body)
 	assert.Equal(t, http.StatusOK, firstResp.Code)
 	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Completed)
 	expectBalance(t, user.Wallet.ID, 150.00)
 
-	secondResp := postRequest("/api/v1/payments/confirm", body)
+	secondResp := postRequestWithPSPAuth("/api/v1/payments/confirm", body)
 	assert.Equal(t, http.StatusOK, secondResp.Code)
 	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Completed)
 	expectBalance(t, user.Wallet.ID, 150.00)
@@ -205,7 +205,7 @@ func TestDepositConfirm_ConcurrentRequests(t *testing.T) {
 	for i := 0; i < concurrentRequests; i++ {
 		go func(index int) {
 			defer wg.Done()
-			postRequest("/api/v1/payments/confirm", body)
+			postRequestWithPSPAuth("/api/v1/payments/confirm", body)
 		}(i)
 	}
 
@@ -232,7 +232,7 @@ func TestDepositCancel(t *testing.T) {
 	})
 
 	body, _ := json.Marshal(req)
-	res := postRequest("/api/v1/payments/cancel", body)
+	res := postRequestWithPSPAuth("/api/v1/payments/cancel", body)
 
 	assert.Equal(t, http.StatusOK, res.Code)
 	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Canceled)
@@ -256,15 +256,64 @@ func TestDepositCancel_DuplicateRequest(t *testing.T) {
 	})
 
 	body, _ := json.Marshal(req)
-	firstResp := postRequest("/api/v1/payments/cancel", body)
+	firstResp := postRequestWithPSPAuth("/api/v1/payments/cancel", body)
 	assert.Equal(t, http.StatusOK, firstResp.Code)
 	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Canceled)
 	expectBalance(t, user.Wallet.ID, 100.00)
 
-	secondResp := postRequest("/api/v1/payments/cancel", body)
+	secondResp := postRequestWithPSPAuth("/api/v1/payments/cancel", body)
 	assert.Equal(t, http.StatusOK, secondResp.Code)
 	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Canceled)
 	expectBalance(t, user.Wallet.ID, 100.00) // Balance should still be unchanged
+}
+
+func TestDepositConfirm_Unauthorized_MissingApiKey(t *testing.T) {
+	truncateTables()
+
+	req := &psp.ConfirmRequest{
+		TransactionID: "c05aa863-d9ab-42e6-8122-f76e43edaa24",
+		Amount:        50.00,
+	}
+
+	user := givenUserHasBalance(100)
+	givenTransaction(&entities.Transaction{
+		UUID:     uuid.MustParse(req.TransactionID),
+		Type:     entities.TransactionTypes.Deposit,
+		Status:   entities.TransactionStatuses.Pending,
+		Amount:   req.Amount,
+		WalletID: user.Wallet.ID,
+	})
+
+	body, _ := json.Marshal(req)
+	res := postRequest("/api/v1/payments/confirm", body) // No API key header
+
+	assert.Equal(t, http.StatusUnauthorized, res.Code)
+	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Pending) // Should remain pending
+	expectBalance(t, user.Wallet.ID, 100.00)                                            // Balance should not change
+}
+
+func TestDepositCancel_Unauthorized_MissingApiKey(t *testing.T) {
+	truncateTables()
+
+	req := &psp.CancelRequest{
+		TransactionID: "d05aa863-d9ab-42e6-8122-f76e43edaa25",
+	}
+
+	user := givenUserHasBalance(100)
+	givenTransaction(&entities.Transaction{
+		UUID:     uuid.MustParse(req.TransactionID),
+		Type:     entities.TransactionTypes.Deposit,
+		Status:   entities.TransactionStatuses.Pending,
+		Amount:   50.00,
+		WalletID: user.Wallet.ID,
+	})
+
+	body, _ := json.Marshal(req)
+	res := postRequest("/api/v1/payments/cancel", body) // No API key header
+
+	assert.Equal(t, http.StatusUnauthorized, res.Code)
+	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Pending) // Should remain pending
+	expectBalance(t, user.Wallet.ID, 100.00)                                            // Balance should not change
 }
 
 func truncateTables() {
@@ -292,6 +341,15 @@ func postRequest(path string, body []byte) *httptest.ResponseRecorder {
 	res := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", path, bytes.NewReader(body))
 	req.Header.Add("Content-Type", "application/json")
+	r.ServeHTTP(res, req)
+	return res
+}
+
+func postRequestWithPSPAuth(path string, body []byte) *httptest.ResponseRecorder {
+	res := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", path, bytes.NewReader(body))
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("X-PSP-API-Key", "psp_secret_key_12345")
 	r.ServeHTTP(res, req)
 	return res
 }
