@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -89,6 +90,71 @@ func TestDepositConfirm(t *testing.T) {
 	res := postRequest("/api/v1/payments/confirm", body)
 
 	assert.Equal(t, http.StatusOK, res.Code)
+	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Completed)
+	expectBalance(t, user.Wallet.ID, 150.00)
+}
+
+func TestDepositConfirm_DuplicateRequest(t *testing.T) {
+	truncateTables()
+
+	req := &psp.ConfirmRequest{
+		TransactionID: "805aa863-d9ab-42e6-8122-f76e43edaa20",
+		Amount:        50.00,
+	}
+
+	user := givenUserHasBalance(100)
+	givenTransaction(&entities.Transaction{
+		UUID:     uuid.MustParse(req.TransactionID),
+		Type:     entities.TransactionTypes.Deposit,
+		Status:   entities.TransactionStatuses.Pending,
+		Amount:   req.Amount,
+		WalletID: user.Wallet.ID,
+	})
+
+	body, _ := json.Marshal(req)
+	firstResp := postRequest("/api/v1/payments/confirm", body)
+	assert.Equal(t, http.StatusOK, firstResp.Code)
+	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Completed)
+	expectBalance(t, user.Wallet.ID, 150.00)
+
+	secondResp := postRequest("/api/v1/payments/confirm", body)
+	assert.Equal(t, http.StatusOK, secondResp.Code)
+	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Completed)
+	expectBalance(t, user.Wallet.ID, 150.00)
+}
+
+func TestDepositConfirm_ConcurrentRequests(t *testing.T) {
+	truncateTables()
+
+	req := &psp.ConfirmRequest{
+		TransactionID: "905aa863-d9ab-42e6-8122-f76e43edaa21",
+		Amount:        50.00,
+	}
+
+	user := givenUserHasBalance(100)
+	givenTransaction(&entities.Transaction{
+		UUID:     uuid.MustParse(req.TransactionID),
+		Type:     entities.TransactionTypes.Deposit,
+		Status:   entities.TransactionStatuses.Pending,
+		Amount:   req.Amount,
+		WalletID: user.Wallet.ID,
+	})
+
+	// Simulate 10 concurrent requests trying to confirm the same transaction
+	concurrentRequests := 10
+	var wg sync.WaitGroup
+	wg.Add(concurrentRequests)
+
+	body, _ := json.Marshal(req)
+	for i := 0; i < concurrentRequests; i++ {
+		go func(index int) {
+			defer wg.Done()
+			postRequest("/api/v1/payments/confirm", body)
+		}(i)
+	}
+
+	wg.Wait()
+
 	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Completed)
 	expectBalance(t, user.Wallet.ID, 150.00)
 }

@@ -43,13 +43,13 @@ func (srv *paymentService) Deposit(req *models.DepositRequest) (redirectUrl stri
 		PaymentMethod: req.PaymentMethod,
 	}
 
+	if err := srv.transactionRepo.Create(tx); err != nil {
+		log.Panicf("Failed to create transaction: %v", err)
+	}
+
 	res, err := srv.paymentServiceProvider.PayIn()
 	if err != nil {
 		log.Panicf("Payment service provider '%s' error: %v", req.PaymentMethod, err)
-	}
-
-	if err := srv.transactionRepo.Create(tx); err != nil {
-		log.Panicf("Failed to create transaction: %v", err)
 	}
 
 	return res.RedirectUrl
@@ -62,7 +62,7 @@ func (srv *paymentService) Confirm(req *psp.ConfirmRequest) {
 	}
 
 	if tx.Status != entities.TransactionStatuses.Pending {
-		log.Debugf("Transaction %s is not in PENDING status, current status: %s", req.TransactionID, tx.Status)
+		log.Infof("Transaction '%s' already processed with status: %s", req.TransactionID, tx.Status)
 		return
 	}
 
@@ -75,5 +75,12 @@ func (srv *paymentService) Confirm(req *psp.ConfirmRequest) {
 		log.Panicf("Unknown transaction type: %s", tx.Type)
 	}
 
-	srv.transactionRepo.Update(tx)
+	updated, err := srv.transactionRepo.UpdateConditional(tx, entities.TransactionStatuses.Pending)
+	if err != nil {
+		log.Panicf("Failed to update transaction: %v", err)
+	}
+
+	if !updated {
+		log.Infof("Transaction '%s' was already processed by another request", req.TransactionID)
+	}
 }

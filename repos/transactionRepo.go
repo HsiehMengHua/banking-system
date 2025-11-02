@@ -14,6 +14,7 @@ type TransactionRepo interface {
 	Create(tx *entities.Transaction) error
 	GetByUUID(uuid.UUID) (*entities.Transaction, error)
 	Update(tx *entities.Transaction) error
+	UpdateConditional(tx *entities.Transaction, expectedStatus entities.TransactionStatus) (bool, error)
 }
 
 type transactionRepo struct {
@@ -48,4 +49,34 @@ func (*transactionRepo) Update(transaction *entities.Transaction) error {
 
 		return nil
 	})
+}
+
+func (*transactionRepo) UpdateConditional(transaction *entities.Transaction, expectedStatus entities.TransactionStatus) (bool, error) {
+	var updated bool
+	err := database.DB.Transaction(func(db *gorm.DB) error {
+		result := db.Model(&entities.Transaction{}).
+			Where("uuid = ? AND status = ?", transaction.UUID, expectedStatus).
+			Updates(map[string]interface{}{
+				"status":     transaction.Status,
+				"updated_at": db.NowFunc(),
+			})
+
+		if result.Error != nil {
+			return result.Error
+		}
+
+		if result.RowsAffected == 0 {
+			updated = false
+			return nil
+		}
+
+		if err := db.Save(&transaction.Wallet).Error; err != nil {
+			return err
+		}
+
+		updated = true
+		return nil
+	})
+
+	return updated, err
 }
