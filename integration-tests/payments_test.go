@@ -74,7 +74,9 @@ func TestDeposit_DuplicateRequests(t *testing.T) {
 	truncateTables()
 	ctrl := gomock.NewController(t)
 	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
-	paymentServiceProviderMock.EXPECT().PayIn().Return(&psp.DepositResponse{}, nil).Times(1)
+
+	// assert PayIn is called only once
+	paymentServiceProviderMock.EXPECT().PayIn().Return(&psp.PayInResponse{}, nil).Times(1)
 
 	sut := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), paymentServiceProviderMock))
 
@@ -268,7 +270,7 @@ func givenUserHasBalance(amount float64) *entities.User {
 
 func givenPayInResponse(txUUID string, redirectUrl string) {
 	paymentServiceProviderMock.EXPECT().PayIn().
-		Return(&psp.DepositResponse{
+		Return(&psp.PayInResponse{
 			TransactionID: txUUID,
 			RedirectUrl:   redirectUrl,
 		}, nil).

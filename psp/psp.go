@@ -7,7 +7,7 @@ import (
 //go:generate mockgen -source=psp.go -destination=mock/psp.go
 
 type PaymentServiceProvider interface {
-	PayIn() (*DepositResponse, error)
+	PayIn() (*PayInResponse, error)
 }
 
 type paymentServiceProvider struct {
@@ -17,10 +17,10 @@ func NewPaymentServiceProvider() PaymentServiceProvider {
 	return &paymentServiceProvider{}
 }
 
-func (*paymentServiceProvider) PayIn() (*DepositResponse, error) {
+func (*paymentServiceProvider) PayIn() (*PayInResponse, error) {
 	log.Debug("Simulate third party deposit process...")
 
-	return &DepositResponse{
+	return &PayInResponse{
 		TransactionID: "<transaction_id>",
 		RedirectUrl:   "<redirect_url>",
 	}, nil

@@ -42,7 +42,14 @@ func (ctrl *paymentController) Deposit(c *gin.Context) {
 		return
 	}
 
-	redirectUrl := ctrl.paymentSrv.Deposit(&req)
+	redirectUrl, err := ctrl.paymentSrv.Deposit(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+
 	c.Redirect(http.StatusFound, redirectUrl)
 }
 

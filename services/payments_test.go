@@ -13,6 +13,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -36,11 +37,16 @@ func TestValidDeposit(t *testing.T) {
 	}
 
 	givenUser(req.UserID)
-	givenPspResponse()
+	givenPayInResponse("https://doesnt.matter", nil)
+
+	// assert transaction is created
 	expectTransactionCreated()
 
 	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, paymentServiceProviderMock)
-	sut.Deposit(req)
+	_, err := sut.Deposit(req)
+	if err != nil {
+		t.Errorf("Expected no error, got: %v", err)
+	}
 }
 
 func TestDeposit_PspRespondsError(t *testing.T) {
@@ -58,13 +64,102 @@ func TestDeposit_PspRespondsError(t *testing.T) {
 	}
 
 	givenUser(req.UserID)
-	givenPspRespondsError()
+	givenPayInResponse("", errors.New("Something went wrong QQ"))
 
 	expectTransactionCreated()
 
 	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, paymentServiceProviderMock)
 
 	expectPanic(t, func() { sut.Deposit(req) })
+}
+
+func TestDeposit_MinimumAmount(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	userRepoMock = repoMock.NewMockUserRepo(ctrl)
+	transactionRepoMock = repoMock.NewMockTransactionRepo(ctrl)
+	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+
+	req := &models.DepositRequest{
+		UUID:          uuid.New(),
+		UserID:        1,
+		Currency:      "TWD",
+		Amount:        services.MIN_DEPOSIT_AMOUNT,
+		PaymentMethod: "AnyPay",
+	}
+
+	givenUser(req.UserID)
+	givenPayInResponse("https://doesnt.matter", nil)
+	expectTransactionCreated()
+
+	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, paymentServiceProviderMock)
+	_, err := sut.Deposit(req)
+
+	assert.Nil(t, err, "Expected no error, got: %v", err)
+}
+
+func TestDeposit_MaximumAmount(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	userRepoMock = repoMock.NewMockUserRepo(ctrl)
+	transactionRepoMock = repoMock.NewMockTransactionRepo(ctrl)
+	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+
+	req := &models.DepositRequest{
+		UUID:          uuid.New(),
+		UserID:        1,
+		Currency:      "TWD",
+		Amount:        services.MAX_DEPOSIT_AMOUNT,
+		PaymentMethod: "AnyPay",
+	}
+
+	givenUser(req.UserID)
+	givenPayInResponse("https://doesnt.matter", nil)
+	expectTransactionCreated()
+
+	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, paymentServiceProviderMock)
+	_, err := sut.Deposit(req)
+
+	assert.Nil(t, err, "Expected no error, got: %v", err)
+}
+
+func TestDeposit_BelowMinimum(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	userRepoMock = repoMock.NewMockUserRepo(ctrl)
+	transactionRepoMock = repoMock.NewMockTransactionRepo(ctrl)
+	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+
+	req := &models.DepositRequest{
+		UUID:          uuid.New(),
+		UserID:        1,
+		Currency:      "TWD",
+		Amount:        services.MIN_DEPOSIT_AMOUNT - 1.00,
+		PaymentMethod: "AnyPay",
+	}
+
+	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, paymentServiceProviderMock)
+
+	_, err := sut.Deposit(req)
+
+	assert.NotNil(t, err, "Expected error for amount below minimum, got nil")
+}
+
+func TestDeposit_AboveMaximum(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	userRepoMock = repoMock.NewMockUserRepo(ctrl)
+	transactionRepoMock = repoMock.NewMockTransactionRepo(ctrl)
+	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+
+	req := &models.DepositRequest{
+		UUID:          uuid.New(),
+		UserID:        1,
+		Currency:      "TWD",
+		Amount:        services.MAX_DEPOSIT_AMOUNT + 1.00,
+		PaymentMethod: "AnyPay",
+	}
+
+	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, paymentServiceProviderMock)
+
+	_, err := sut.Deposit(req)
+	assert.NotNil(t, err, "Expected error for amount above maximum, got nil")
 }
 
 func givenUser(userId uint) {
@@ -78,19 +173,12 @@ func givenUser(userId uint) {
 		AnyTimes()
 }
 
-func givenPspResponse() {
+func givenPayInResponse(redirectUrl string, err error) {
 	paymentServiceProviderMock.EXPECT().
 		PayIn().
-		Return(&psp.DepositResponse{
-			RedirectUrl: "https://external.payment.page/payin",
-		}, nil).
-		Times(1)
-}
-
-func givenPspRespondsError() {
-	paymentServiceProviderMock.EXPECT().
-		PayIn().
-		Return(&psp.DepositResponse{}, errors.New("Something went wrong QQ")).
+		Return(&psp.PayInResponse{
+			RedirectUrl: redirectUrl,
+		}, err).
 		Times(1)
 }
 

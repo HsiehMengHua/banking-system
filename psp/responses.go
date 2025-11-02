@@ -1,6 +1,6 @@
 package psp
 
-type DepositResponse struct {
+type PayInResponse struct {
 	TransactionID string
 	RedirectUrl   string
 }

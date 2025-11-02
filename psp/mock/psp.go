@@ -35,10 +35,10 @@ func (m *MockPaymentServiceProvider) EXPECT() *MockPaymentServiceProviderMockRec
 }
 
 // PayIn mocks base method.
-func (m *MockPaymentServiceProvider) PayIn() (*psp.DepositResponse, error) {
+func (m *MockPaymentServiceProvider) PayIn() (*psp.PayInResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PayIn")
-	ret0, _ := ret[0].(*psp.DepositResponse)
+	ret0, _ := ret[0].(*psp.PayInResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

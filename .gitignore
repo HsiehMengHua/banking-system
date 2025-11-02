@@ -1,4 +1,3 @@
+**/mock
 .env.local
-services/mock
-repos/mock
 .claude/settings.local.json

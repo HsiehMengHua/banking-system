@@ -5,6 +5,7 @@ import (
 	"banking-system/models"
 	"banking-system/psp"
 	"banking-system/repos"
+	"fmt"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -12,8 +13,13 @@ import (
 
 //go:generate mockgen -source=payments.go -destination=mock/payments.go
 
+const (
+	MIN_DEPOSIT_AMOUNT = 1.00
+	MAX_DEPOSIT_AMOUNT = 100000.00
+)
+
 type PaymentService interface {
-	Deposit(req *models.DepositRequest) (redirectUrl string)
+	Deposit(req *models.DepositRequest) (redirectUrl string, err error)
 	Confirm(req *psp.ConfirmRequest)
 }
 
@@ -31,7 +37,15 @@ func NewPaymentService(userRepo repos.UserRepo, transactionRepo repos.Transactio
 	}
 }
 
-func (srv *paymentService) Deposit(req *models.DepositRequest) (redirectUrl string) {
+func (srv *paymentService) Deposit(req *models.DepositRequest) (redirectUrl string, err error) {
+	if req.Amount < MIN_DEPOSIT_AMOUNT {
+		return "", fmt.Errorf("deposit amount %.2f is below minimum allowed amount %.2f", req.Amount, MIN_DEPOSIT_AMOUNT)
+	}
+
+	if req.Amount > MAX_DEPOSIT_AMOUNT {
+		return "", fmt.Errorf("deposit amount %.2f exceeds maximum allowed amount %.2f", req.Amount, MAX_DEPOSIT_AMOUNT)
+	}
+
 	user, _ := srv.userRepo.Get(req.UserID)
 
 	tx := &entities.Transaction{
@@ -52,7 +66,7 @@ func (srv *paymentService) Deposit(req *models.DepositRequest) (redirectUrl stri
 		log.Panicf("Payment service provider '%s' error: %v", req.PaymentMethod, err)
 	}
 
-	return res.RedirectUrl
+	return res.RedirectUrl, nil
 }
 
 func (srv *paymentService) Confirm(req *psp.ConfirmRequest) {
