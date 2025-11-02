@@ -601,6 +601,40 @@ func TestTransfer_AboveMaximum(t *testing.T) {
 	expectBalance(t, recipient.Wallet.ID, 50.00, "Balance should remain unchanged")
 }
 
+func TestTransfer_ConcurrentRequests(t *testing.T) {
+	truncateTables()
+
+	sender := givenUserHasBalance(1000.00)
+	recipient := givenUserHasBalance(50.00)
+
+	transferOutUUID := uuid.New()
+	transferRequest := &models.TransferRequest{
+		UUID:            transferOutUUID,
+		SenderUserID:    sender.ID,
+		RecipientUserID: recipient.ID,
+		Currency:        "TWD",
+		Amount:          100.00,
+	}
+
+	// Simulate 10 concurrent transfer requests with the same UUID
+	concurrentRequests := 10
+	var wg sync.WaitGroup
+	wg.Add(concurrentRequests)
+
+	body, _ := json.Marshal(transferRequest)
+	for i := range concurrentRequests {
+		go func(index int) {
+			defer wg.Done()
+			postRequest("/api/v1/payments/transfer", body)
+		}(i)
+	}
+
+	wg.Wait()
+
+	expectBalance(t, sender.Wallet.ID, 900.00, "Sender balance should be deducted only once")
+	expectBalance(t, recipient.Wallet.ID, 150.00, "Recipient balance should be credited only once")
+}
+
 func truncateTables() {
 	// Disable foreign key checks
 	database.DB.Exec("SET session_replication_role = 'replica';")
