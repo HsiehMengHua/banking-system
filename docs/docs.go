@@ -133,6 +133,43 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/payments/withdraw": {
+            "post": {
+                "description": "Creates a new PENDING withdrawal transaction, deducts the amount from wallet balance, and sends request to PSP for processing.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payments"
+                ],
+                "summary": "Initiate a Withdrawal Transaction",
+                "parameters": [
+                    {
+                        "description": "Withdrawal initiation details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.WithdrawRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Withdrawal initiated successfully",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - validation error or insufficient balance",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -151,6 +188,28 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "payment_method": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
+                "uuid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.WithdrawRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "currency",
+                "user_id"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "currency": {
                     "type": "string"
                 },
                 "user_id": {

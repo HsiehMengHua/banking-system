@@ -202,7 +202,7 @@ func TestDepositConfirm_ConcurrentRequests(t *testing.T) {
 	wg.Add(concurrentRequests)
 
 	body, _ := json.Marshal(req)
-	for i := 0; i < concurrentRequests; i++ {
+	for i := range concurrentRequests {
 		go func(index int) {
 			defer wg.Done()
 			postRequestWithPSPAuth("/api/v1/payments/confirm", body)
@@ -316,6 +316,113 @@ func TestDepositCancel_Unauthorized_MissingApiKey(t *testing.T) {
 	expectBalance(t, user.Wallet.ID, 100.00)                                            // Balance should not change
 }
 
+func TestWithdraw_Success(t *testing.T) {
+	truncateTables()
+	ctrl := gomock.NewController(t)
+	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+	sut := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), paymentServiceProviderMock))
+
+	txUUID := uuid.New()
+	givenPayOutResponse(txUUID.String())
+	user := givenUserHasBalance(200.00)
+
+	req, _ := json.Marshal(&models.WithdrawRequest{
+		UUID:     txUUID,
+		UserID:   user.ID,
+		Currency: user.Wallet.Currency,
+		Amount:   50.00,
+	})
+	res := postRequestWithHandler("/api/v1/payments/withdraw", sut.Withdraw, req)
+
+	assert.Equal(t, http.StatusOK, res.Code)
+	expectTransactionEqual(t, &entities.Transaction{
+		WalletID: user.Wallet.ID,
+		Type:     entities.TransactionTypes.Withdrawal,
+		Status:   entities.TransactionStatuses.Pending,
+		Amount:   50.00,
+	})
+	expectBalance(t, user.Wallet.ID, 150.00) // Balance should be deducted
+}
+
+func TestWithdraw_InsufficientBalance(t *testing.T) {
+	truncateTables()
+	ctrl := gomock.NewController(t)
+	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+	sut := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), paymentServiceProviderMock))
+
+	txUUID := uuid.New()
+	user := givenUserHasBalance(30.00)
+
+	req, _ := json.Marshal(&models.WithdrawRequest{
+		UUID:     txUUID,
+		UserID:   user.ID,
+		Currency: user.Wallet.Currency,
+		Amount:   50.00, // More than available balance
+	})
+	res := postRequestWithHandler("/api/v1/payments/withdraw", sut.Withdraw, req)
+
+	assert.Equal(t, http.StatusBadRequest, res.Code)
+	expectBalance(t, user.Wallet.ID, 30.00) // Balance should remain unchanged
+}
+
+func TestWithdraw_DuplicateRequests(t *testing.T) {
+	truncateTables()
+	ctrl := gomock.NewController(t)
+	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+
+	user := givenUserHasBalance(200.00)
+
+	txUUID := uuid.New()
+	req, _ := json.Marshal(&models.WithdrawRequest{
+		UUID:     txUUID,
+		UserID:   user.ID,
+		Currency: user.Wallet.Currency,
+		Amount:   50.00,
+	})
+
+	// assert PayOut is called only once
+	paymentServiceProviderMock.EXPECT().PayOut().Return(&psp.PayOutResponse{
+		TransactionID: txUUID.String(),
+	}, nil).Times(1)
+
+	sut := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), paymentServiceProviderMock))
+
+	// Simulate 10 concurrent requests
+	concurrentRequests := 10
+	successCount := make(chan bool, concurrentRequests)
+	failureCount := make(chan bool, concurrentRequests)
+	var wg sync.WaitGroup
+	wg.Add(concurrentRequests)
+
+	for i := range concurrentRequests {
+		go func(index int) {
+			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					failureCount <- true
+					return
+				}
+			}()
+
+			res := postRequestWithHandler("/api/v1/payments/withdraw", sut.Withdraw, req)
+
+			if res.Code == http.StatusOK {
+				successCount <- true
+			} else {
+				failureCount <- true
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	close(successCount)
+	close(failureCount)
+
+	assert.Equal(t, 1, len(successCount), "Exactly one request should succeed.")
+	assert.Equal(t, concurrentRequests-1, len(failureCount), "The remaining requests should have failed.")
+	expectBalance(t, user.Wallet.ID, 150.00) // Balance should be deducted only once
+}
+
 func truncateTables() {
 	// Disable foreign key checks
 	database.DB.Exec("SET session_replication_role = 'replica';")
@@ -383,6 +490,14 @@ func givenPayInResponse(txUUID string, redirectUrl string) {
 		Return(&psp.PayInResponse{
 			TransactionID: txUUID,
 			RedirectUrl:   redirectUrl,
+		}, nil).
+		Times(1)
+}
+
+func givenPayOutResponse(txID string) {
+	paymentServiceProviderMock.EXPECT().PayOut().
+		Return(&psp.PayOutResponse{
+			TransactionID: txID,
 		}, nil).
 		Times(1)
 }

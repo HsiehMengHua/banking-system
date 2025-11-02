@@ -16,6 +16,21 @@ definitions:
     - currency
     - user_id
     type: object
+  models.WithdrawRequest:
+    properties:
+      amount:
+        type: number
+      currency:
+        type: string
+      user_id:
+        type: integer
+      uuid:
+        type: string
+    required:
+    - amount
+    - currency
+    - user_id
+    type: object
   psp.CancelRequest:
     properties:
       transactionID:
@@ -110,6 +125,31 @@ paths:
           schema:
             type: object
       summary: Initiate a Deposit Transaction
+      tags:
+      - payments
+  /payments/withdraw:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new PENDING withdrawal transaction, deducts the amount
+        from wallet balance, and sends request to PSP for processing.
+      parameters:
+      - description: Withdrawal initiation details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.WithdrawRequest'
+      responses:
+        "200":
+          description: Withdrawal initiated successfully
+          schema:
+            type: object
+        "400":
+          description: Bad request - validation error or insufficient balance
+          schema:
+            type: object
+      summary: Initiate a Withdrawal Transaction
       tags:
       - payments
 swagger: "2.0"
