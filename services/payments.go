@@ -123,6 +123,8 @@ func (srv *paymentService) Confirm(req *psp.ConfirmRequest) error {
 	switch tx.Type {
 	case entities.TransactionTypes.Deposit:
 		tx.Wallet.Balance += tx.Amount
+	case entities.TransactionTypes.Withdrawal:
+		// No action needed, amount already deducted during withdrawal initiation
 	default:
 		log.Panicf("Unknown transaction type: %s", tx.Type)
 	}

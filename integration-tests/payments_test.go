@@ -129,8 +129,7 @@ func TestDeposit_DuplicateRequests(t *testing.T) {
 func TestDepositConfirm(t *testing.T) {
 	truncateTables()
 	req := &psp.ConfirmRequest{
-		TransactionID: "705aa863-d9ab-42e6-8122-f76e43edaa19",
-		Amount:        50.00,
+		TransactionID: uuid.NewString(),
 	}
 
 	user := givenUserHasBalance(100)
@@ -138,7 +137,7 @@ func TestDepositConfirm(t *testing.T) {
 		UUID:     uuid.MustParse(req.TransactionID),
 		Type:     entities.TransactionTypes.Deposit,
 		Status:   entities.TransactionStatuses.Pending,
-		Amount:   req.Amount,
+		Amount:   50.00,
 		WalletID: user.Wallet.ID,
 	})
 
@@ -154,8 +153,7 @@ func TestDepositConfirm_DuplicateRequest(t *testing.T) {
 	truncateTables()
 
 	req := &psp.ConfirmRequest{
-		TransactionID: "805aa863-d9ab-42e6-8122-f76e43edaa20",
-		Amount:        50.00,
+		TransactionID: uuid.NewString(),
 	}
 
 	user := givenUserHasBalance(100)
@@ -163,7 +161,7 @@ func TestDepositConfirm_DuplicateRequest(t *testing.T) {
 		UUID:     uuid.MustParse(req.TransactionID),
 		Type:     entities.TransactionTypes.Deposit,
 		Status:   entities.TransactionStatuses.Pending,
-		Amount:   req.Amount,
+		Amount:   50.00,
 		WalletID: user.Wallet.ID,
 	})
 
@@ -183,8 +181,7 @@ func TestDepositConfirm_ConcurrentRequests(t *testing.T) {
 	truncateTables()
 
 	req := &psp.ConfirmRequest{
-		TransactionID: "905aa863-d9ab-42e6-8122-f76e43edaa21",
-		Amount:        50.00,
+		TransactionID: uuid.NewString(),
 	}
 
 	user := givenUserHasBalance(100)
@@ -192,7 +189,7 @@ func TestDepositConfirm_ConcurrentRequests(t *testing.T) {
 		UUID:     uuid.MustParse(req.TransactionID),
 		Type:     entities.TransactionTypes.Deposit,
 		Status:   entities.TransactionStatuses.Pending,
-		Amount:   req.Amount,
+		Amount:   50.00,
 		WalletID: user.Wallet.ID,
 	})
 
@@ -271,8 +268,7 @@ func TestDepositConfirm_Unauthorized_MissingApiKey(t *testing.T) {
 	truncateTables()
 
 	req := &psp.ConfirmRequest{
-		TransactionID: "c05aa863-d9ab-42e6-8122-f76e43edaa24",
-		Amount:        50.00,
+		TransactionID: uuid.NewString(),
 	}
 
 	user := givenUserHasBalance(100)
@@ -280,7 +276,7 @@ func TestDepositConfirm_Unauthorized_MissingApiKey(t *testing.T) {
 		UUID:     uuid.MustParse(req.TransactionID),
 		Type:     entities.TransactionTypes.Deposit,
 		Status:   entities.TransactionStatuses.Pending,
-		Amount:   req.Amount,
+		Amount:   50.00,
 		WalletID: user.Wallet.ID,
 	})
 
