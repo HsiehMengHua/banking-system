@@ -98,8 +98,12 @@ func (ctrl *userController) Login(c *gin.Context) {
 	tokenString := ctrl.generateToken(foundUser)
 
 	// Write token to response cookie
-	c.SetSameSite(http.SameSiteNoneMode)
-	c.SetCookie("authorization", tokenString, 60*60*24*7, "/", "", true, true)
+	cookieDomain := ""
+	if os.Getenv("APP_ENV") == "production" {
+		cookieDomain = ".up.railway.app"
+	}
+	c.SetCookie("authorization", tokenString, 60*60*24*7, "/", cookieDomain, true, true)
+	c.SetSameSite(http.SameSiteLaxMode)
 	c.Status(http.StatusOK)
 }
 
