@@ -130,9 +130,9 @@ func (*userController) generateToken(user *entities.User) string {
 		"exp": time.Now().Add(time.Hour * 72).Unix(),
 	})
 
-	key := os.Getenv("SECRET_KEY")
+	key := os.Getenv("USER_TOKEN_SECRET_KEY")
 	if key == "" {
-		log.Panic("SECRET_KEY environment variable not set")
+		log.Panic("USER_TOKEN_SECRET_KEY environment variable not set")
 	}
 
 	tokenString, err := token.SignedString([]byte(key))
