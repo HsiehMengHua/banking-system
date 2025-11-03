@@ -16,6 +16,16 @@ definitions:
     - currency
     - user_id
     type: object
+  models.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
   models.RegisterRequest:
     properties:
       name:
@@ -228,6 +238,33 @@ paths:
           schema:
             type: object
       summary: Register a new user
+      tags:
+      - users
+  /user/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user with username and password, and sets an authorization
+        cookie
+      parameters:
+      - description: Login form data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.LoginRequest'
+      responses:
+        "200":
+          description: User logged in successfully
+        "400":
+          description: Bad Request (e.g., invalid body or validation error)
+          schema:
+            type: object
+        "401":
+          description: Unauthorized (Invalid username or password)
+          schema:
+            type: object
+      summary: User Login
       tags:
       - users
 swagger: "2.0"

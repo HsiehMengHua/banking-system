@@ -24,14 +24,20 @@ func Setup() *gin.Engine {
 
 	api := r.Group("/api/v1")
 	{
-		api.POST("/user", userCtrl.Register)
+		{
+			userApi := api.Group("/user")
+			userApi.POST("", userCtrl.Register)
+			userApi.POST("/login", userCtrl.Login)
+		}
 
-		payments := api.Group("/payments")
-		payments.POST("/deposit", paymentCtrl.Deposit)
-		payments.POST("/withdraw", paymentCtrl.Withdraw)
-		payments.POST("/transfer", paymentCtrl.Transfer)
-		payments.POST("/confirm", middleware.VerifyPSPApiKey(), paymentCtrl.Confirm)
-		payments.POST("/cancel", middleware.VerifyPSPApiKey(), paymentCtrl.Cancel)
+		{
+			paymentApi := api.Group("/payments")
+			paymentApi.POST("/deposit", paymentCtrl.Deposit)
+			paymentApi.POST("/withdraw", paymentCtrl.Withdraw)
+			paymentApi.POST("/transfer", paymentCtrl.Transfer)
+			paymentApi.POST("/confirm", middleware.VerifyPSPApiKey(), paymentCtrl.Confirm)
+			paymentApi.POST("/cancel", middleware.VerifyPSPApiKey(), paymentCtrl.Cancel)
+		}
 	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))

@@ -10,6 +10,7 @@ import (
 type UserRepo interface {
 	Create(user *entities.User) error
 	Get(id uint) (*entities.User, error)
+	GetByUsername(username string) (*entities.User, error)
 	UpdateWallet(user *entities.User) error
 }
 
@@ -34,4 +35,10 @@ func (*userRepo) Get(id uint) (*entities.User, error) {
 func (*userRepo) UpdateWallet(user *entities.User) error {
 	result := database.DB.Save(&user.Wallet)
 	return result.Error
+}
+
+func (*userRepo) GetByUsername(username string) (*entities.User, error) {
+	var user entities.User
+	result := database.DB.Where("username = ?", username).First(&user)
+	return &user, result.Error
 }

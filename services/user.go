@@ -15,6 +15,7 @@ import (
 
 type UserService interface {
 	Register(req *models.RegisterRequest) error
+	GetByUsername(username string) (*entities.User, error)
 }
 
 type userService struct {
@@ -51,4 +52,17 @@ func (srv *userService) Register(req *models.RegisterRequest) error {
 	}
 
 	return nil
+}
+
+func (srv *userService) GetByUsername(username string) (*entities.User, error) {
+	userEntity, err := srv.userRepo.GetByUsername(username)
+
+	if err != nil {
+		if err.Error() == "record not found" {
+			return nil, err
+		} else {
+			log.Panicf("Failed to get user by username: %v", err)
+		}
+	}
+	return userEntity, nil
 }
