@@ -4,7 +4,9 @@ import (
 	"banking-system/models"
 	"banking-system/psp"
 	"banking-system/services"
+	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -43,6 +45,14 @@ func (ctrl *paymentController) Deposit(c *gin.Context) {
 		})
 		return
 	}
+
+	userID, err := getUserIDFromHeader(c)
+	if err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"message": err.Error()})
+		return
+	}
+
+	req.UserID = userID
 
 	redirectUrl, err := ctrl.paymentSrv.Deposit(&req)
 	if err != nil {
@@ -167,4 +177,18 @@ func (ctrl *paymentController) Cancel(c *gin.Context) {
 	}
 
 	c.Status(http.StatusOK)
+}
+
+func getUserIDFromHeader(c *gin.Context) (uint, error) {
+	userIDStr := c.GetHeader("X-User-ID")
+	if userIDStr == "" {
+		return 0, errors.New("authentication context missing (No X-User-ID header)")
+	}
+
+	userID, err := strconv.ParseUint(userIDStr, 10, 64)
+	if err != nil {
+		return 0, errors.New("invalid user ID format from gateway")
+	}
+
+	return uint(userID), nil
 }
