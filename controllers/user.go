@@ -98,8 +98,8 @@ func (ctrl *userController) Login(c *gin.Context) {
 	tokenString := ctrl.generateToken(foundUser)
 
 	// Write token to response cookie
-	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("authorization", tokenString, 60*60*24*7, "/", "", false, true)
+	c.SetSameSite(http.SameSiteNoneMode)
+	c.SetCookie("authorization", tokenString, 60*60*24*7, "/", "", true, true)
 	c.Status(http.StatusOK)
 }
 
