@@ -15,7 +15,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/bank-account": {
+        "/bank-accounts": {
             "get": {
                 "description": "Retrieves all bank accounts for the authenticated user",
                 "consumes": [
@@ -89,7 +89,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/bank-account/user/{userId}": {
+        "/bank-accounts/user/{userId}": {
             "get": {
                 "description": "Retrieves all bank accounts for a specific user by user ID",
                 "consumes": [
@@ -127,7 +127,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/bank-account/{id}": {
+        "/bank-accounts/{id}": {
             "get": {
                 "description": "Retrieves a specific bank account by ID for the authenticated user",
                 "consumes": [

@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type BankAccountController interface {
@@ -37,7 +38,7 @@ func NewBankAccountController(bankAccountSrv services.BankAccountService) BankAc
 // @Param        request body models.CreateBankAccountRequest true "Bank account creation details"
 // @Success      201  {object}  models.BankAccountResponse  "Bank account created successfully"
 // @Response     400  {object}  object  "Bad request - validation error"
-// @Router       /bank-account [post]
+// @Router       /bank-accounts [post]
 func (ctrl *bankAccountController) Create(c *gin.Context) {
 	var req models.CreateBankAccountRequest
 
@@ -76,7 +77,7 @@ func (ctrl *bankAccountController) Create(c *gin.Context) {
 // @Success      200  {object}  models.BankAccountResponse  "Bank account retrieved successfully"
 // @Response     400  {object}  object  "Bad request"
 // @Response     404  {object}  object  "Bank account not found"
-// @Router       /bank-account/{id} [get]
+// @Router       /bank-accounts/{id} [get]
 func (ctrl *bankAccountController) GetByID(c *gin.Context) {
 	userID, err := getUserIDFromHeader(c)
 	if err != nil {
@@ -116,7 +117,7 @@ func (ctrl *bankAccountController) GetByID(c *gin.Context) {
 // @Accept       json
 // @Param        X-User-ID header string true "User ID"
 // @Success      200  {array}  models.BankAccountResponse  "Bank accounts retrieved successfully"
-// @Router       /bank-account [get]
+// @Router       /bank-accounts [get]
 func (ctrl *bankAccountController) GetAll(c *gin.Context) {
 	userID, err := getUserIDFromHeader(c)
 	if err != nil {
@@ -142,7 +143,7 @@ func (ctrl *bankAccountController) GetAll(c *gin.Context) {
 // @Param        userId path int true "User ID"
 // @Success      200  {array}  models.BankAccountResponse  "Bank accounts retrieved successfully"
 // @Response     400  {object}  object  "Bad request"
-// @Router       /bank-account/user/{userId} [get]
+// @Router       /bank-accounts/user/{userId} [get]
 func (ctrl *bankAccountController) GetByUserID(c *gin.Context) {
 	userIDStr := c.Param("userId")
 	userID, err := strconv.Atoi(userIDStr)
@@ -154,8 +155,8 @@ func (ctrl *bankAccountController) GetByUserID(c *gin.Context) {
 	}
 
 	accounts := []entities.BankAccount{
-		{UserID: uint(userID), BankCode: "001", AccountNumber: "1234567890"},
-		{UserID: uint(userID), BankCode: "002", AccountNumber: "0987654321"},
+		{Model: gorm.Model{ID: 1}, UserID: uint(userID), BankCode: "001", AccountNumber: "1234567890"},
+		{Model: gorm.Model{ID: 2}, UserID: uint(userID), BankCode: "002", AccountNumber: "0987654321"},
 	}
 
 	c.JSON(http.StatusOK, accounts)
@@ -171,7 +172,7 @@ func (ctrl *bankAccountController) GetByUserID(c *gin.Context) {
 // @Success      200  {object}  models.BankAccountResponse  "Bank account updated successfully"
 // @Response     400  {object}  object  "Bad request"
 // @Response     404  {object}  object  "Bank account not found"
-// @Router       /bank-account/{id} [put]
+// @Router       /bank-accounts/{id} [put]
 func (ctrl *bankAccountController) Update(c *gin.Context) {
 	userID, err := getUserIDFromHeader(c)
 	if err != nil {
@@ -222,7 +223,7 @@ func (ctrl *bankAccountController) Update(c *gin.Context) {
 // @Success      200  {object}  nil  "Bank account deleted successfully"
 // @Response     400  {object}  object  "Bad request"
 // @Response     404  {object}  object  "Bank account not found"
-// @Router       /bank-account/{id} [delete]
+// @Router       /bank-accounts/{id} [delete]
 func (ctrl *bankAccountController) Delete(c *gin.Context) {
 	userID, err := getUserIDFromHeader(c)
 	if err != nil {

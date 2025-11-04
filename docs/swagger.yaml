@@ -123,7 +123,7 @@ definitions:
 info:
   contact: {}
 paths:
-  /bank-account:
+  /bank-accounts:
     get:
       consumes:
       - application/json
@@ -172,7 +172,7 @@ paths:
       summary: Create a new bank account
       tags:
       - bank-accounts
-  /bank-account/{id}:
+  /bank-accounts/{id}:
     delete:
       consumes:
       - application/json
@@ -270,7 +270,7 @@ paths:
       summary: Update a bank account
       tags:
       - bank-accounts
-  /bank-account/user/{userId}:
+  /bank-accounts/user/{userId}:
     get:
       consumes:
       - application/json
