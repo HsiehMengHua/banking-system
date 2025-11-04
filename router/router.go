@@ -3,7 +3,6 @@ package router
 import (
 	"banking-system/controllers"
 	"banking-system/docs"
-	"banking-system/middleware"
 	"banking-system/psp"
 	"banking-system/repos"
 	"banking-system/services"
@@ -35,8 +34,8 @@ func Setup() *gin.Engine {
 			paymentApi.POST("/deposit", paymentCtrl.Deposit)
 			paymentApi.POST("/withdraw", paymentCtrl.Withdraw)
 			paymentApi.POST("/transfer", paymentCtrl.Transfer)
-			paymentApi.POST("/confirm", middleware.VerifyPSPApiKey(), paymentCtrl.Confirm)
-			paymentApi.POST("/cancel", middleware.VerifyPSPApiKey(), paymentCtrl.Cancel)
+			paymentApi.POST("/confirm", paymentCtrl.Confirm)
+			paymentApi.POST("/cancel", paymentCtrl.Cancel)
 		}
 	}
 

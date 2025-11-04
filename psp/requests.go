@@ -1,9 +1,9 @@
 package psp
 
 type ConfirmRequest struct {
-	TransactionID string
+	TransactionID string `json:"transaction_id" binding:"required"`
 }
 
 type CancelRequest struct {
-	TransactionID string
+	TransactionID string `json:"transaction_id" binding:"required"`
 }
