@@ -15,6 +15,264 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/bank-account": {
+            "get": {
+                "description": "Retrieves all bank accounts for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bank-accounts"
+                ],
+                "summary": "Get all bank accounts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "X-User-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Bank accounts retrieved successfully",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.BankAccountResponse"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Creates a new bank account for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bank-accounts"
+                ],
+                "summary": "Create a new bank account",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "X-User-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Bank account creation details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateBankAccountRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Bank account created successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.BankAccountResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - validation error",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            }
+        },
+        "/bank-account/user/{userId}": {
+            "get": {
+                "description": "Retrieves all bank accounts for a specific user by user ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bank-accounts"
+                ],
+                "summary": "Get all bank accounts by user ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Bank accounts retrieved successfully",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.BankAccountResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            }
+        },
+        "/bank-account/{id}": {
+            "get": {
+                "description": "Retrieves a specific bank account by ID for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bank-accounts"
+                ],
+                "summary": "Get a bank account by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "X-User-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Bank Account ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Bank account retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.BankAccountResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "404": {
+                        "description": "Bank account not found",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Updates a specific bank account by ID for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bank-accounts"
+                ],
+                "summary": "Update a bank account",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "X-User-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Bank Account ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Bank account update details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateBankAccountRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Bank account updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.BankAccountResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "404": {
+                        "description": "Bank account not found",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes a specific bank account by ID for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bank-accounts"
+                ],
+                "summary": "Delete a bank account",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "X-User-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Bank Account ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Bank account deleted successfully"
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "404": {
+                        "description": "Bank account not found",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            }
+        },
         "/payments/cancel": {
             "post": {
                 "description": "Handles the cancellation callback from the Payment Service Provider (PSP) when a deposit is cancelled.",
@@ -289,6 +547,46 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "models.BankAccountResponse": {
+            "type": "object",
+            "properties": {
+                "account_number": {
+                    "type": "string"
+                },
+                "bank_code": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.CreateBankAccountRequest": {
+            "type": "object",
+            "required": [
+                "account_number",
+                "bank_code"
+            ],
+            "properties": {
+                "account_number": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "bank_code": {
+                    "type": "string",
+                    "maxLength": 50
+                }
+            }
+        },
         "models.DepositRequest": {
             "type": "object",
             "required": [
@@ -366,6 +664,23 @@ const docTemplate = `{
                 },
                 "uuid": {
                     "type": "string"
+                }
+            }
+        },
+        "models.UpdateBankAccountRequest": {
+            "type": "object",
+            "required": [
+                "account_number",
+                "bank_code"
+            ],
+            "properties": {
+                "account_number": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "bank_code": {
+                    "type": "string",
+                    "maxLength": 50
                 }
             }
         },

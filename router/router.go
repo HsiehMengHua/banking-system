@@ -20,6 +20,7 @@ func Setup() *gin.Engine {
 	userRepo := repos.NewUserRepo()
 	paymentCtrl := controllers.NewPaymentController(services.NewPaymentService(userRepo, repos.NewTransactionRepo(), psp.NewPSPFactory()))
 	userCtrl := controllers.NewUserController(services.NewUserService(userRepo))
+	bankAccountCtrl := controllers.NewBankAccountController(services.NewBankAccountService(repos.NewBankAccountRepo()))
 
 	api := r.Group("/api/v1")
 	{
@@ -36,6 +37,16 @@ func Setup() *gin.Engine {
 			paymentApi.POST("/transfer", paymentCtrl.Transfer)
 			paymentApi.POST("/confirm", paymentCtrl.Confirm)
 			paymentApi.POST("/cancel", paymentCtrl.Cancel)
+		}
+
+		{
+			bankAccountApi := api.Group("/bank-accounts")
+			bankAccountApi.GET("/user/:userId", bankAccountCtrl.GetByUserID)
+			bankAccountApi.POST("", bankAccountCtrl.Create)
+			bankAccountApi.GET("", bankAccountCtrl.GetAll)
+			bankAccountApi.GET("/:id", bankAccountCtrl.GetByID)
+			bankAccountApi.PUT("/:id", bankAccountCtrl.Update)
+			bankAccountApi.DELETE("/:id", bankAccountCtrl.Delete)
 		}
 	}
 

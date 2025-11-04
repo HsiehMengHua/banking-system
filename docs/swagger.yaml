@@ -1,4 +1,31 @@
 definitions:
+  models.BankAccountResponse:
+    properties:
+      account_number:
+        type: string
+      bank_code:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  models.CreateBankAccountRequest:
+    properties:
+      account_number:
+        maxLength: 100
+        type: string
+      bank_code:
+        maxLength: 50
+        type: string
+    required:
+    - account_number
+    - bank_code
+    type: object
   models.DepositRequest:
     properties:
       amount:
@@ -54,6 +81,18 @@ definitions:
     - recipient_user_id
     - sender_user_id
     type: object
+  models.UpdateBankAccountRequest:
+    properties:
+      account_number:
+        maxLength: 100
+        type: string
+      bank_code:
+        maxLength: 50
+        type: string
+    required:
+    - account_number
+    - bank_code
+    type: object
   models.WithdrawRequest:
     properties:
       amount:
@@ -84,6 +123,178 @@ definitions:
 info:
   contact: {}
 paths:
+  /bank-account:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves all bank accounts for the authenticated user
+      parameters:
+      - description: User ID
+        in: header
+        name: X-User-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Bank accounts retrieved successfully
+          schema:
+            items:
+              $ref: '#/definitions/models.BankAccountResponse'
+            type: array
+      summary: Get all bank accounts
+      tags:
+      - bank-accounts
+    post:
+      consumes:
+      - application/json
+      description: Creates a new bank account for the authenticated user
+      parameters:
+      - description: User ID
+        in: header
+        name: X-User-ID
+        required: true
+        type: string
+      - description: Bank account creation details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateBankAccountRequest'
+      responses:
+        "201":
+          description: Bank account created successfully
+          schema:
+            $ref: '#/definitions/models.BankAccountResponse'
+        "400":
+          description: Bad request - validation error
+          schema:
+            type: object
+      summary: Create a new bank account
+      tags:
+      - bank-accounts
+  /bank-account/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a specific bank account by ID for the authenticated user
+      parameters:
+      - description: User ID
+        in: header
+        name: X-User-ID
+        required: true
+        type: string
+      - description: Bank Account ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Bank account deleted successfully
+        "400":
+          description: Bad request
+          schema:
+            type: object
+        "404":
+          description: Bank account not found
+          schema:
+            type: object
+      summary: Delete a bank account
+      tags:
+      - bank-accounts
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a specific bank account by ID for the authenticated user
+      parameters:
+      - description: User ID
+        in: header
+        name: X-User-ID
+        required: true
+        type: string
+      - description: Bank Account ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Bank account retrieved successfully
+          schema:
+            $ref: '#/definitions/models.BankAccountResponse'
+        "400":
+          description: Bad request
+          schema:
+            type: object
+        "404":
+          description: Bank account not found
+          schema:
+            type: object
+      summary: Get a bank account by ID
+      tags:
+      - bank-accounts
+    put:
+      consumes:
+      - application/json
+      description: Updates a specific bank account by ID for the authenticated user
+      parameters:
+      - description: User ID
+        in: header
+        name: X-User-ID
+        required: true
+        type: string
+      - description: Bank Account ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Bank account update details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateBankAccountRequest'
+      responses:
+        "200":
+          description: Bank account updated successfully
+          schema:
+            $ref: '#/definitions/models.BankAccountResponse'
+        "400":
+          description: Bad request
+          schema:
+            type: object
+        "404":
+          description: Bank account not found
+          schema:
+            type: object
+      summary: Update a bank account
+      tags:
+      - bank-accounts
+  /bank-account/user/{userId}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves all bank accounts for a specific user by user ID
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Bank accounts retrieved successfully
+          schema:
+            items:
+              $ref: '#/definitions/models.BankAccountResponse'
+            type: array
+        "400":
+          description: Bad request
+          schema:
+            type: object
+      summary: Get all bank accounts by user ID
+      tags:
+      - bank-accounts
   /payments/cancel:
     post:
       consumes:
