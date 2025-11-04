@@ -18,13 +18,15 @@ func NewPSPFactory() PSPFactory {
 type PaymentMethod string
 
 var PaymentMethods = struct {
-	FakePay PaymentMethod
+	FakePay      PaymentMethod
+	BankTransfer PaymentMethod
 
 	// others for example...
 	// CreditCard PaymentMethod
 	// PayPal     PaymentMethod
 }{
-	FakePay: "FakePay",
+	FakePay:      "FakePay",
+	BankTransfer: "BankTransfer",
 
 	// others for example...
 	// CreditCard: "credit_card",
@@ -35,6 +37,8 @@ func (f *pspFactory) NewPaymentServiceProvider(paymentMethod PaymentMethod) Paym
 	switch paymentMethod {
 	case PaymentMethods.FakePay:
 		return NewFakePay()
+	case PaymentMethods.BankTransfer:
+		return NewBankTransferPSP()
 
 	default:
 		log.Panicf("payment method '%s' is not supported", paymentMethod)
