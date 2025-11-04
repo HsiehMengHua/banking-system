@@ -3,8 +3,8 @@ package models
 import "github.com/google/uuid"
 
 type TransferRequest struct {
-	UUID            uuid.UUID `json:"uuid"`
-	SenderUserID    uint      `json:"sender_user_id" binding:"required"`
-	RecipientUserID uint      `json:"recipient_user_id" binding:"required"`
-	Amount          float64   `json:"amount" binding:"required,gt=0"`
+	UUID              uuid.UUID `json:"uuid"`
+	SenderUserID      uint
+	RecipientUsername string  `json:"recipient_username" binding:"required"`
+	Amount            float64 `json:"amount" binding:"required,gt=0"`
 }

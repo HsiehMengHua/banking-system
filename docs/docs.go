@@ -649,15 +649,15 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "amount",
-                "recipient_user_id",
+                "recipient_username",
                 "sender_user_id"
             ],
             "properties": {
                 "amount": {
                     "type": "number"
                 },
-                "recipient_user_id": {
-                    "type": "integer"
+                "recipient_username": {
+                    "type": "string"
                 },
                 "sender_user_id": {
                     "type": "integer"

@@ -39,6 +39,6 @@ func (*userRepo) UpdateWallet(user *entities.User) error {
 
 func (*userRepo) GetByUsername(username string) (*entities.User, error) {
 	var user entities.User
-	result := database.DB.Where("username = ?", username).First(&user)
+	result := database.DB.Preload("Wallet").Where("username = ?", username).First(&user)
 	return &user, result.Error
 }

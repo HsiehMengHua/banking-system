@@ -122,6 +122,14 @@ func (ctrl *paymentController) Transfer(c *gin.Context) {
 		return
 	}
 
+	userID, err := getUserIDFromHeader(c)
+	if err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"message": err.Error()})
+		return
+	}
+
+	req.SenderUserID = userID
+
 	if err := ctrl.paymentSrv.Transfer(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": err.Error(),

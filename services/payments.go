@@ -131,18 +131,21 @@ func (srv *paymentService) Transfer(req *models.TransferRequest) error {
 		return fmt.Errorf("transfer amount %.2f exceeds maximum allowed amount %.2f", req.Amount, MAX_TRANSFER_AMOUNT)
 	}
 
-	if req.SenderUserID == req.RecipientUserID {
-		return fmt.Errorf("cannot transfer to the same user")
-	}
-
 	sender, err := srv.userRepo.Get(req.SenderUserID)
 	if err != nil {
 		log.Panicf("Failed to get sender user: %v", err)
 	}
 
-	recipient, err := srv.userRepo.Get(req.RecipientUserID)
+	recipient, err := srv.userRepo.GetByUsername(req.RecipientUsername)
 	if err != nil {
+		if err.Error() == "record not found" {
+			return fmt.Errorf("recipient user not found")
+		}
 		log.Panicf("Failed to get recipient user: %v", err)
+	}
+
+	if sender.ID == recipient.ID {
+		return fmt.Errorf("cannot transfer to the same user")
 	}
 
 	if sender.Wallet.Balance < req.Amount {

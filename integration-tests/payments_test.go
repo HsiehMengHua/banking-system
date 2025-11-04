@@ -451,10 +451,10 @@ func TestTransfer_Success(t *testing.T) {
 
 	transferOutUUID := uuid.New()
 	req, _ := json.Marshal(&models.TransferRequest{
-		UUID:            transferOutUUID,
-		SenderUserID:    sender.ID,
-		RecipientUserID: recipient.ID,
-		Amount:          10.00,
+		UUID:              transferOutUUID,
+		SenderUserID:      sender.ID,
+		RecipientUsername: recipient.Username,
+		Amount:            10.00,
 	})
 
 	res := postRequest("/api/v1/payments/transfer", req)
@@ -473,10 +473,10 @@ func TestTransfer_InsufficientBalance(t *testing.T) {
 
 	txUUID := uuid.New()
 	req, _ := json.Marshal(&models.TransferRequest{
-		UUID:            txUUID,
-		SenderUserID:    sender.ID,
-		RecipientUserID: recipient.ID,
-		Amount:          100.00, // More than sender's balance
+		UUID:              txUUID,
+		SenderUserID:      sender.ID,
+		RecipientUsername: recipient.Username,
+		Amount:            100.00, // More than sender's balance
 	})
 
 	res := postRequest("/api/v1/payments/transfer", req)
@@ -493,10 +493,10 @@ func TestTransfer_SameUser(t *testing.T) {
 
 	txUUID := uuid.New()
 	req, _ := json.Marshal(&models.TransferRequest{
-		UUID:            txUUID,
-		SenderUserID:    user.ID,
-		RecipientUserID: user.ID, // Same user
-		Amount:          50.00,
+		UUID:              txUUID,
+		SenderUserID:      user.ID,
+		RecipientUsername: user.Username, // Same user
+		Amount:            50.00,
 	})
 
 	res := postRequest("/api/v1/payments/transfer", req)
@@ -513,10 +513,10 @@ func TestTransfer_BelowMinimum(t *testing.T) {
 
 	txUUID := uuid.New()
 	req, _ := json.Marshal(&models.TransferRequest{
-		UUID:            txUUID,
-		SenderUserID:    sender.ID,
-		RecipientUserID: recipient.ID,
-		Amount:          0.50, // Below minimum
+		UUID:              txUUID,
+		SenderUserID:      sender.ID,
+		RecipientUsername: recipient.Username,
+		Amount:            0.50, // Below minimum
 	})
 
 	res := postRequest("/api/v1/payments/transfer", req)
@@ -534,10 +534,10 @@ func TestTransfer_AboveMaximum(t *testing.T) {
 
 	txUUID := uuid.New()
 	req, _ := json.Marshal(&models.TransferRequest{
-		UUID:            txUUID,
-		SenderUserID:    sender.ID,
-		RecipientUserID: recipient.ID,
-		Amount:          150000.00, // Above maximum
+		UUID:              txUUID,
+		SenderUserID:      sender.ID,
+		RecipientUsername: recipient.Username,
+		Amount:            150000.00, // Above maximum
 	})
 
 	res := postRequest("/api/v1/payments/transfer", req)
@@ -555,10 +555,10 @@ func TestTransfer_ConcurrentRequests(t *testing.T) {
 
 	transferOutUUID := uuid.New()
 	transferRequest := &models.TransferRequest{
-		UUID:            transferOutUUID,
-		SenderUserID:    sender.ID,
-		RecipientUserID: recipient.ID,
-		Amount:          100.00,
+		UUID:              transferOutUUID,
+		SenderUserID:      sender.ID,
+		RecipientUsername: recipient.Username,
+		Amount:            100.00,
 	}
 
 	// Simulate 10 concurrent transfer requests with the same UUID
