@@ -11,6 +11,7 @@ import (
 	"banking-system/services"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -52,13 +53,13 @@ func TestDeposit(t *testing.T) {
 
 	req, _ := json.Marshal(&models.DepositRequest{
 		UUID:          txUUID,
-		UserID:        user.ID,
-		Currency:      user.Wallet.Currency,
 		Amount:        100.00,
 		PaymentMethod: "AnyPay",
 	})
-	res := postRequestWithHandler("/api/v1/payments/deposit", sut.Deposit, req)
+	res := postRequestWithHandler("/api/v1/payments/deposit", sut.Deposit, req, user.ID)
 
+	assert.Equal(t, http.StatusFound, res.Code)
+	assert.Equal(t, redirectUrl, res.Result().Header.Get("Location"))
 	expectTransactionEqual(t, &entities.Transaction{
 		UUID:          txUUID,
 		WalletID:      user.Wallet.ID,
@@ -67,8 +68,6 @@ func TestDeposit(t *testing.T) {
 		Amount:        100.00,
 		PaymentMethod: "AnyPay",
 	})
-	assert.Equal(t, http.StatusFound, res.Code)
-	assert.Equal(t, redirectUrl, res.Result().Header.Get("Location"))
 }
 
 func TestDeposit_DuplicateRequests(t *testing.T) {
@@ -86,8 +85,6 @@ func TestDeposit_DuplicateRequests(t *testing.T) {
 	txUUID := uuid.New()
 	req, _ := json.Marshal(&models.DepositRequest{
 		UUID:          txUUID,
-		UserID:        user.ID,
-		Currency:      user.Wallet.Currency,
 		Amount:        100.00,
 		PaymentMethod: "AnyPay",
 	})
@@ -109,7 +106,7 @@ func TestDeposit_DuplicateRequests(t *testing.T) {
 				}
 			}()
 
-			res := postRequestWithHandler("/api/v1/payments/deposit", sut.Deposit, req)
+			res := postRequestWithHandler("/api/v1/payments/deposit", sut.Deposit, req, user.ID)
 
 			if res.Code == http.StatusFound {
 				successCount <- true
@@ -324,12 +321,10 @@ func TestWithdraw_Success(t *testing.T) {
 	user := givenUserHasBalance(200.00)
 
 	req, _ := json.Marshal(&models.WithdrawRequest{
-		UUID:     txUUID,
-		UserID:   user.ID,
-		Currency: user.Wallet.Currency,
-		Amount:   50.00,
+		UUID:   txUUID,
+		Amount: 50.00,
 	})
-	res := postRequestWithHandler("/api/v1/payments/withdraw", sut.Withdraw, req)
+	res := postRequestWithHandler("/api/v1/payments/withdraw", sut.Withdraw, req, user.ID)
 
 	assert.Equal(t, http.StatusOK, res.Code)
 	expectTransactionEqual(t, &entities.Transaction{
@@ -352,12 +347,10 @@ func TestWithdraw_InsufficientBalance(t *testing.T) {
 	user := givenUserHasBalance(30.00)
 
 	req, _ := json.Marshal(&models.WithdrawRequest{
-		UUID:     txUUID,
-		UserID:   user.ID,
-		Currency: user.Wallet.Currency,
-		Amount:   50.00, // More than available balance
+		UUID:   txUUID,
+		Amount: 50.00, // More than available balance
 	})
-	res := postRequestWithHandler("/api/v1/payments/withdraw", sut.Withdraw, req)
+	res := postRequestWithHandler("/api/v1/payments/withdraw", sut.Withdraw, req, user.ID)
 
 	assert.Equal(t, http.StatusBadRequest, res.Code)
 	expectBalance(t, user.Wallet.ID, 30.00) // Balance should remain unchanged
@@ -372,10 +365,8 @@ func TestWithdraw_DuplicateRequests(t *testing.T) {
 
 	txUUID := uuid.New()
 	req, _ := json.Marshal(&models.WithdrawRequest{
-		UUID:     txUUID,
-		UserID:   user.ID,
-		Currency: user.Wallet.Currency,
-		Amount:   50.00,
+		UUID:   txUUID,
+		Amount: 50.00,
 	})
 
 	// assert PayOut is called only once
@@ -402,7 +393,7 @@ func TestWithdraw_DuplicateRequests(t *testing.T) {
 				}
 			}()
 
-			res := postRequestWithHandler("/api/v1/payments/withdraw", sut.Withdraw, req)
+			res := postRequestWithHandler("/api/v1/payments/withdraw", sut.Withdraw, req, user.ID)
 
 			if res.Code == http.StatusOK {
 				successCount <- true
@@ -503,7 +494,6 @@ func TestTransfer_Success(t *testing.T) {
 		UUID:            transferOutUUID,
 		SenderUserID:    sender.ID,
 		RecipientUserID: recipient.ID,
-		Currency:        "TWD",
 		Amount:          10.00,
 	})
 
@@ -526,7 +516,6 @@ func TestTransfer_InsufficientBalance(t *testing.T) {
 		UUID:            txUUID,
 		SenderUserID:    sender.ID,
 		RecipientUserID: recipient.ID,
-		Currency:        "TWD",
 		Amount:          100.00, // More than sender's balance
 	})
 
@@ -547,7 +536,6 @@ func TestTransfer_SameUser(t *testing.T) {
 		UUID:            txUUID,
 		SenderUserID:    user.ID,
 		RecipientUserID: user.ID, // Same user
-		Currency:        "TWD",
 		Amount:          50.00,
 	})
 
@@ -568,7 +556,6 @@ func TestTransfer_BelowMinimum(t *testing.T) {
 		UUID:            txUUID,
 		SenderUserID:    sender.ID,
 		RecipientUserID: recipient.ID,
-		Currency:        "TWD",
 		Amount:          0.50, // Below minimum
 	})
 
@@ -590,7 +577,6 @@ func TestTransfer_AboveMaximum(t *testing.T) {
 		UUID:            txUUID,
 		SenderUserID:    sender.ID,
 		RecipientUserID: recipient.ID,
-		Currency:        "TWD",
 		Amount:          150000.00, // Above maximum
 	})
 
@@ -612,7 +598,6 @@ func TestTransfer_ConcurrentRequests(t *testing.T) {
 		UUID:            transferOutUUID,
 		SenderUserID:    sender.ID,
 		RecipientUserID: recipient.ID,
-		Currency:        "TWD",
 		Amount:          100.00,
 	}
 
@@ -673,12 +658,17 @@ func postRequestWithPSPAuth(path string, body []byte) *httptest.ResponseRecorder
 	return res
 }
 
-func postRequestWithHandler(path string, handler func(c *gin.Context), body []byte) *httptest.ResponseRecorder {
+func postRequestWithHandler(path string, handler func(c *gin.Context), body []byte, userID ...uint) *httptest.ResponseRecorder {
 	res := httptest.NewRecorder()
 	ctx, r := gin.CreateTestContext(res)
 	r.POST(path, handler)
 	ctx.Request = httptest.NewRequest(http.MethodPost, path, bytes.NewReader(body))
 	ctx.Request.Header.Set("Content-Type", "application/json")
+
+	// Set X-USER-ID header if provided
+	if len(userID) > 0 {
+		ctx.Request.Header.Set("X-User-ID", fmt.Sprintf("%d", userID[0]))
+	}
 
 	r.ServeHTTP(res, ctx.Request)
 	return res

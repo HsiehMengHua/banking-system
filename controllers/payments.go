@@ -83,6 +83,14 @@ func (ctrl *paymentController) Withdraw(c *gin.Context) {
 		return
 	}
 
+	userID, err := getUserIDFromHeader(c)
+	if err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"message": err.Error()})
+		return
+	}
+
+	req.UserID = userID
+
 	if err := ctrl.paymentSrv.Withdraw(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": err.Error(),

@@ -31,7 +31,6 @@ func TestValidDeposit(t *testing.T) {
 	req := &models.DepositRequest{
 		UUID:          uuid.New(),
 		UserID:        1,
-		Currency:      "TWD",
 		Amount:        100.00,
 		PaymentMethod: "AnyPay",
 	}
@@ -58,7 +57,6 @@ func TestDeposit_PspRespondsError(t *testing.T) {
 	req := &models.DepositRequest{
 		UUID:          uuid.New(),
 		UserID:        1,
-		Currency:      "TWD",
 		Amount:        100.00,
 		PaymentMethod: "FragilePay",
 	}
@@ -82,7 +80,6 @@ func TestDeposit_MinimumAmount(t *testing.T) {
 	req := &models.DepositRequest{
 		UUID:          uuid.New(),
 		UserID:        1,
-		Currency:      "TWD",
 		Amount:        services.MIN_DEPOSIT_AMOUNT,
 		PaymentMethod: "AnyPay",
 	}
@@ -106,7 +103,6 @@ func TestDeposit_MaximumAmount(t *testing.T) {
 	req := &models.DepositRequest{
 		UUID:          uuid.New(),
 		UserID:        1,
-		Currency:      "TWD",
 		Amount:        services.MAX_DEPOSIT_AMOUNT,
 		PaymentMethod: "AnyPay",
 	}
@@ -130,7 +126,6 @@ func TestDeposit_BelowMinimum(t *testing.T) {
 	req := &models.DepositRequest{
 		UUID:          uuid.New(),
 		UserID:        1,
-		Currency:      "TWD",
 		Amount:        services.MIN_DEPOSIT_AMOUNT - 1.00,
 		PaymentMethod: "AnyPay",
 	}
@@ -151,7 +146,6 @@ func TestDeposit_AboveMaximum(t *testing.T) {
 	req := &models.DepositRequest{
 		UUID:          uuid.New(),
 		UserID:        1,
-		Currency:      "TWD",
 		Amount:        services.MAX_DEPOSIT_AMOUNT + 1.00,
 		PaymentMethod: "AnyPay",
 	}
@@ -169,10 +163,9 @@ func TestWithdraw_Success(t *testing.T) {
 	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
 
 	req := &models.WithdrawRequest{
-		UUID:     uuid.New(),
-		UserID:   1,
-		Currency: "TWD",
-		Amount:   50.00,
+		UUID:   uuid.New(),
+		UserID: 1,
+		Amount: 50.00,
 	}
 
 	// given user has sufficient balance
@@ -196,10 +189,9 @@ func TestWithdraw_InsufficientBalance(t *testing.T) {
 	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
 
 	req := &models.WithdrawRequest{
-		UUID:     uuid.New(),
-		UserID:   1,
-		Currency: "TWD",
-		Amount:   150.00, // More than balance
+		UUID:   uuid.New(),
+		UserID: 1,
+		Amount: 150.00, // More than balance
 	}
 
 	givenUserHasBalance(req.UserID, 100)
