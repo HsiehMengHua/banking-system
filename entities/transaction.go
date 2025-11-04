@@ -1,6 +1,7 @@
 package entities
 
 import (
+	"banking-system/psp"
 	"time"
 
 	"github.com/google/uuid"
@@ -42,7 +43,7 @@ type Transaction struct {
 	Type          TransactionType   `gorm:"type:varchar(20);not null"`
 	Status        TransactionStatus `gorm:"type:varchar(20);not null"`
 	Amount        float64           `gorm:"type:numeric(18,4);not null"`
-	PaymentMethod string            `gorm:"type:varchar(50)"`
+	PaymentMethod psp.PaymentMethod `gorm:"type:varchar(50)"`
 
 	WalletID uint `gorm:"not null"`
 	Wallet   *Wallet

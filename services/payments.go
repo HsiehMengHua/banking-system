@@ -29,16 +29,16 @@ type PaymentService interface {
 }
 
 type paymentService struct {
-	userRepo               repos.UserRepo
-	transactionRepo        repos.TransactionRepo
-	paymentServiceProvider psp.PaymentServiceProvider
+	userRepo        repos.UserRepo
+	transactionRepo repos.TransactionRepo
+	pspFactory      psp.PSPFactory
 }
 
-func NewPaymentService(userRepo repos.UserRepo, transactionRepo repos.TransactionRepo, paymentServiceProvider psp.PaymentServiceProvider) PaymentService {
+func NewPaymentService(userRepo repos.UserRepo, transactionRepo repos.TransactionRepo, pspFactory psp.PSPFactory) PaymentService {
 	return &paymentService{
-		userRepo:               userRepo,
-		transactionRepo:        transactionRepo,
-		paymentServiceProvider: paymentServiceProvider,
+		userRepo:        userRepo,
+		transactionRepo: transactionRepo,
+		pspFactory:      pspFactory,
 	}
 }
 
@@ -66,7 +66,8 @@ func (srv *paymentService) Deposit(req *models.DepositRequest) (redirectUrl stri
 		log.Panicf("Failed to create transaction: %v", err)
 	}
 
-	res, err := srv.paymentServiceProvider.PayIn()
+	psp := srv.pspFactory.NewPaymentServiceProvider(req.PaymentMethod)
+	res, err := psp.PayIn()
 	if err != nil {
 		log.Panicf("Payment service provider '%s' error: %v", req.PaymentMethod, err)
 	}
@@ -85,12 +86,13 @@ func (srv *paymentService) Withdraw(req *models.WithdrawRequest) error {
 	}
 
 	tx := &entities.Transaction{
-		UUID:     req.UUID,
-		WalletID: user.Wallet.ID,
-		Amount:   req.Amount,
-		Status:   entities.TransactionStatuses.Pending,
-		Type:     entities.TransactionTypes.Withdrawal,
-		Wallet:   &user.Wallet,
+		UUID:          req.UUID,
+		WalletID:      user.Wallet.ID,
+		Amount:        req.Amount,
+		Status:        entities.TransactionStatuses.Pending,
+		Type:          entities.TransactionTypes.Withdrawal,
+		PaymentMethod: req.PaymentMethod,
+		Wallet:        &user.Wallet,
 	}
 
 	if err := srv.transactionRepo.Create(tx); err != nil {
@@ -102,7 +104,8 @@ func (srv *paymentService) Withdraw(req *models.WithdrawRequest) error {
 		log.Panicf("Failed to update wallet for user ID %d: %v", req.UserID, err)
 	}
 
-	_, err = srv.paymentServiceProvider.PayOut()
+	psp := srv.pspFactory.NewPaymentServiceProvider(req.PaymentMethod)
+	_, err = psp.PayOut()
 	if err != nil {
 		log.Panicf("Payment service provider error: %v", err)
 	}

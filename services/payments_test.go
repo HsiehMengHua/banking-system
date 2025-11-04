@@ -17,16 +17,18 @@ import (
 )
 
 var (
-	userRepoMock               *repoMock.MockUserRepo
-	transactionRepoMock        *repoMock.MockTransactionRepo
-	paymentServiceProviderMock *pspMock.MockPaymentServiceProvider
+	userRepoMock        *repoMock.MockUserRepo
+	transactionRepoMock *repoMock.MockTransactionRepo
+	pspFactoryMock      *pspMock.MockPSPFactory
+	paymentProviderMock *pspMock.MockPaymentServiceProvider
 )
 
 func TestValidDeposit(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	userRepoMock = repoMock.NewMockUserRepo(ctrl)
 	transactionRepoMock = repoMock.NewMockTransactionRepo(ctrl)
-	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+	pspFactoryMock = pspMock.NewMockPSPFactory(ctrl)
+	paymentProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
 
 	req := &models.DepositRequest{
 		UUID:          uuid.New(),
@@ -41,7 +43,7 @@ func TestValidDeposit(t *testing.T) {
 	// assert transaction is created
 	expectTransactionCreated()
 
-	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, paymentServiceProviderMock)
+	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, pspFactoryMock)
 	_, err := sut.Deposit(req)
 	if err != nil {
 		t.Errorf("Expected no error, got: %v", err)
@@ -52,7 +54,7 @@ func TestDeposit_PspRespondsError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	userRepoMock = repoMock.NewMockUserRepo(ctrl)
 	transactionRepoMock = repoMock.NewMockTransactionRepo(ctrl)
-	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+	pspFactoryMock = pspMock.NewMockPSPFactory(ctrl)
 
 	req := &models.DepositRequest{
 		UUID:          uuid.New(),
@@ -66,7 +68,7 @@ func TestDeposit_PspRespondsError(t *testing.T) {
 
 	expectTransactionCreated()
 
-	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, paymentServiceProviderMock)
+	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, pspFactoryMock)
 
 	expectPanic(t, func() { sut.Deposit(req) })
 }
@@ -75,7 +77,7 @@ func TestDeposit_MinimumAmount(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	userRepoMock = repoMock.NewMockUserRepo(ctrl)
 	transactionRepoMock = repoMock.NewMockTransactionRepo(ctrl)
-	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+	pspFactoryMock = pspMock.NewMockPSPFactory(ctrl)
 
 	req := &models.DepositRequest{
 		UUID:          uuid.New(),
@@ -88,7 +90,7 @@ func TestDeposit_MinimumAmount(t *testing.T) {
 	givenPayInResponse("https://doesnt.matter", nil)
 	expectTransactionCreated()
 
-	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, paymentServiceProviderMock)
+	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, pspFactoryMock)
 	_, err := sut.Deposit(req)
 
 	assert.Nil(t, err, "Expected no error, got: %v", err)
@@ -98,7 +100,7 @@ func TestDeposit_MaximumAmount(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	userRepoMock = repoMock.NewMockUserRepo(ctrl)
 	transactionRepoMock = repoMock.NewMockTransactionRepo(ctrl)
-	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+	pspFactoryMock = pspMock.NewMockPSPFactory(ctrl)
 
 	req := &models.DepositRequest{
 		UUID:          uuid.New(),
@@ -111,7 +113,7 @@ func TestDeposit_MaximumAmount(t *testing.T) {
 	givenPayInResponse("https://doesnt.matter", nil)
 	expectTransactionCreated()
 
-	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, paymentServiceProviderMock)
+	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, pspFactoryMock)
 	_, err := sut.Deposit(req)
 
 	assert.Nil(t, err, "Expected no error, got: %v", err)
@@ -121,7 +123,7 @@ func TestDeposit_BelowMinimum(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	userRepoMock = repoMock.NewMockUserRepo(ctrl)
 	transactionRepoMock = repoMock.NewMockTransactionRepo(ctrl)
-	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+	pspFactoryMock = pspMock.NewMockPSPFactory(ctrl)
 
 	req := &models.DepositRequest{
 		UUID:          uuid.New(),
@@ -130,7 +132,7 @@ func TestDeposit_BelowMinimum(t *testing.T) {
 		PaymentMethod: "AnyPay",
 	}
 
-	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, paymentServiceProviderMock)
+	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, pspFactoryMock)
 
 	_, err := sut.Deposit(req)
 
@@ -141,7 +143,7 @@ func TestDeposit_AboveMaximum(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	userRepoMock = repoMock.NewMockUserRepo(ctrl)
 	transactionRepoMock = repoMock.NewMockTransactionRepo(ctrl)
-	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+	pspFactoryMock = pspMock.NewMockPSPFactory(ctrl)
 
 	req := &models.DepositRequest{
 		UUID:          uuid.New(),
@@ -150,7 +152,7 @@ func TestDeposit_AboveMaximum(t *testing.T) {
 		PaymentMethod: "AnyPay",
 	}
 
-	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, paymentServiceProviderMock)
+	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, pspFactoryMock)
 
 	_, err := sut.Deposit(req)
 	assert.NotNil(t, err, "Expected error for amount above maximum, got nil")
@@ -160,7 +162,7 @@ func TestWithdraw_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	userRepoMock = repoMock.NewMockUserRepo(ctrl)
 	transactionRepoMock = repoMock.NewMockTransactionRepo(ctrl)
-	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+	pspFactoryMock = pspMock.NewMockPSPFactory(ctrl)
 
 	req := &models.WithdrawRequest{
 		UUID:   uuid.New(),
@@ -176,7 +178,7 @@ func TestWithdraw_Success(t *testing.T) {
 	expectWalletUpdated()
 	expectPayOutCalled()
 
-	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, paymentServiceProviderMock)
+	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, pspFactoryMock)
 	err := sut.Withdraw(req)
 
 	assert.Nil(t, err)
@@ -186,7 +188,7 @@ func TestWithdraw_InsufficientBalance(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	userRepoMock = repoMock.NewMockUserRepo(ctrl)
 	transactionRepoMock = repoMock.NewMockTransactionRepo(ctrl)
-	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+	pspFactoryMock = pspMock.NewMockPSPFactory(ctrl)
 
 	req := &models.WithdrawRequest{
 		UUID:   uuid.New(),
@@ -196,7 +198,7 @@ func TestWithdraw_InsufficientBalance(t *testing.T) {
 
 	givenUserHasBalance(req.UserID, 100)
 
-	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, paymentServiceProviderMock)
+	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, pspFactoryMock)
 	err := sut.Withdraw(req)
 
 	assert.NotNil(t, err)
@@ -216,7 +218,12 @@ func givenUserHasBalance(userID uint, amount float64) {
 }
 
 func givenPayInResponse(redirectUrl string, err error) {
-	paymentServiceProviderMock.EXPECT().
+	pspFactoryMock.EXPECT().
+		NewPaymentServiceProvider(gomock.Any()).
+		Return(paymentProviderMock).
+		Times(1)
+
+	paymentProviderMock.EXPECT().
 		PayIn().
 		Return(&psp.PayInResponse{
 			RedirectUrl: redirectUrl,
@@ -237,7 +244,12 @@ func expectWalletUpdated() {
 }
 
 func expectPayOutCalled() {
-	paymentServiceProviderMock.EXPECT().
+	pspFactoryMock.EXPECT().
+		NewPaymentServiceProvider(gomock.Any()).
+		Return(paymentProviderMock).
+		Times(1)
+
+	paymentProviderMock.EXPECT().
 		PayOut().
 		Return(&psp.PayOutResponse{}, nil).
 		Times(1)

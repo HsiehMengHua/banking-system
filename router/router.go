@@ -18,7 +18,7 @@ func Setup() *gin.Engine {
 	r.StaticFile("/version", "./version.txt")
 
 	userRepo := repos.NewUserRepo()
-	paymentCtrl := controllers.NewPaymentController(services.NewPaymentService(userRepo, repos.NewTransactionRepo(), psp.NewPaymentServiceProvider()))
+	paymentCtrl := controllers.NewPaymentController(services.NewPaymentService(userRepo, repos.NewTransactionRepo(), psp.NewPSPFactory()))
 	userCtrl := controllers.NewUserController(services.NewUserService(userRepo))
 
 	api := r.Group("/api/v1")

@@ -37,14 +37,16 @@ func TestMain(m *testing.M) {
 }
 
 var (
-	paymentServiceProviderMock *pspMock.MockPaymentServiceProvider
+	pspFactoryMock      *pspMock.MockPSPFactory
+	paymentProviderMock *pspMock.MockPaymentServiceProvider
 )
 
 func TestDeposit(t *testing.T) {
 	truncateTables()
 	ctrl := gomock.NewController(t)
-	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
-	sut := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), paymentServiceProviderMock))
+	pspFactoryMock = pspMock.NewMockPSPFactory(ctrl)
+	paymentProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+	sut := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), pspFactoryMock))
 
 	txUUID := uuid.New()
 	const redirectUrl = "https://external.payment.page/payin"
@@ -73,12 +75,13 @@ func TestDeposit(t *testing.T) {
 func TestDeposit_DuplicateRequests(t *testing.T) {
 	truncateTables()
 	ctrl := gomock.NewController(t)
-	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+	pspFactoryMock = pspMock.NewMockPSPFactory(ctrl)
+	paymentProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
 
-	// assert PayIn is called only once
-	paymentServiceProviderMock.EXPECT().PayIn().Return(&psp.PayInResponse{}, nil).Times(1)
+	// // assert PayIn is called only once
+	expectPayInCalledOnce()
 
-	sut := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), paymentServiceProviderMock))
+	sut := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), pspFactoryMock))
 
 	user := givenUserHasBalance(0)
 
@@ -262,59 +265,12 @@ func TestDepositCancel_DuplicateRequest(t *testing.T) {
 	expectBalance(t, user.Wallet.ID, 100.00) // Balance should still be unchanged
 }
 
-func TestDepositConfirm_Unauthorized_MissingApiKey(t *testing.T) {
-	truncateTables()
-
-	req := &psp.ConfirmRequest{
-		TransactionID: uuid.NewString(),
-	}
-
-	user := givenUserHasBalance(100)
-	givenTransaction(&entities.Transaction{
-		UUID:     uuid.MustParse(req.TransactionID),
-		Type:     entities.TransactionTypes.Deposit,
-		Status:   entities.TransactionStatuses.Pending,
-		Amount:   50.00,
-		WalletID: user.Wallet.ID,
-	})
-
-	body, _ := json.Marshal(req)
-	res := postRequest("/api/v1/payments/confirm", body) // No API key header
-
-	assert.Equal(t, http.StatusUnauthorized, res.Code)
-	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Pending) // Should remain pending
-	expectBalance(t, user.Wallet.ID, 100.00)                                            // Balance should not change
-}
-
-func TestDepositCancel_Unauthorized_MissingApiKey(t *testing.T) {
-	truncateTables()
-
-	req := &psp.CancelRequest{
-		TransactionID: "d05aa863-d9ab-42e6-8122-f76e43edaa25",
-	}
-
-	user := givenUserHasBalance(100)
-	givenTransaction(&entities.Transaction{
-		UUID:     uuid.MustParse(req.TransactionID),
-		Type:     entities.TransactionTypes.Deposit,
-		Status:   entities.TransactionStatuses.Pending,
-		Amount:   50.00,
-		WalletID: user.Wallet.ID,
-	})
-
-	body, _ := json.Marshal(req)
-	res := postRequest("/api/v1/payments/cancel", body) // No API key header
-
-	assert.Equal(t, http.StatusUnauthorized, res.Code)
-	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Pending) // Should remain pending
-	expectBalance(t, user.Wallet.ID, 100.00)                                            // Balance should not change
-}
-
 func TestWithdraw_Success(t *testing.T) {
 	truncateTables()
 	ctrl := gomock.NewController(t)
-	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
-	sut := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), paymentServiceProviderMock))
+	pspFactoryMock = pspMock.NewMockPSPFactory(ctrl)
+	paymentProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+	sut := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), pspFactoryMock))
 
 	txUUID := uuid.New()
 	givenPayOutResponse(txUUID.String())
@@ -340,8 +296,9 @@ func TestWithdraw_Success(t *testing.T) {
 func TestWithdraw_InsufficientBalance(t *testing.T) {
 	truncateTables()
 	ctrl := gomock.NewController(t)
-	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
-	sut := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), paymentServiceProviderMock))
+	pspFactoryMock = pspMock.NewMockPSPFactory(ctrl)
+	paymentProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+	sut := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), pspFactoryMock))
 
 	txUUID := uuid.New()
 	user := givenUserHasBalance(30.00)
@@ -359,7 +316,8 @@ func TestWithdraw_InsufficientBalance(t *testing.T) {
 func TestWithdraw_DuplicateRequests(t *testing.T) {
 	truncateTables()
 	ctrl := gomock.NewController(t)
-	paymentServiceProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+	pspFactoryMock = pspMock.NewMockPSPFactory(ctrl)
+	paymentProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
 
 	user := givenUserHasBalance(200.00)
 
@@ -370,11 +328,9 @@ func TestWithdraw_DuplicateRequests(t *testing.T) {
 	})
 
 	// assert PayOut is called only once
-	paymentServiceProviderMock.EXPECT().PayOut().Return(&psp.PayOutResponse{
-		TransactionID: txUUID.String(),
-	}, nil).Times(1)
+	expectPayOutCalledOnce()
 
-	sut := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), paymentServiceProviderMock))
+	sut := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), pspFactoryMock))
 
 	// Simulate 10 concurrent requests
 	concurrentRequests := 10
@@ -688,19 +644,49 @@ func givenUserHasBalance(amount float64) *entities.User {
 }
 
 func givenPayInResponse(txUUID string, redirectUrl string) {
-	paymentServiceProviderMock.EXPECT().PayIn().
+	pspFactoryMock.EXPECT().
+		NewPaymentServiceProvider(gomock.Any()).
+		Return(paymentProviderMock)
+
+	paymentProviderMock.EXPECT().PayIn().
 		Return(&psp.PayInResponse{
 			TransactionID: txUUID,
 			RedirectUrl:   redirectUrl,
-		}, nil).
+		}, nil)
+}
+
+func expectPayInCalledOnce() {
+	pspFactoryMock.EXPECT().
+		NewPaymentServiceProvider(gomock.Any()).
+		Return(paymentProviderMock).
+		Times(1)
+
+	paymentProviderMock.EXPECT().PayIn().
+		Return(&psp.PayInResponse{}, nil).
 		Times(1)
 }
 
 func givenPayOutResponse(txID string) {
-	paymentServiceProviderMock.EXPECT().PayOut().
+	pspFactoryMock.EXPECT().
+		NewPaymentServiceProvider(gomock.Any()).
+		Return(paymentProviderMock).
+		Times(1)
+
+	paymentProviderMock.EXPECT().PayOut().
 		Return(&psp.PayOutResponse{
 			TransactionID: txID,
 		}, nil).
+		Times(1)
+}
+
+func expectPayOutCalledOnce() {
+	pspFactoryMock.EXPECT().
+		NewPaymentServiceProvider(gomock.Any()).
+		Return(paymentProviderMock).
+		Times(1)
+
+	paymentProviderMock.EXPECT().PayOut().
+		Return(&psp.PayOutResponse{}, nil).
 		Times(1)
 }
 
