@@ -6,6 +6,7 @@ import (
 	"banking-system/psp"
 	"banking-system/repos"
 	"fmt"
+	"os"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -18,12 +19,12 @@ const (
 	MAX_DEPOSIT_AMOUNT  = 100000.00
 	MIN_TRANSFER_AMOUNT = 1.00
 	MAX_TRANSFER_AMOUNT = 100000.00
-	confirmCallbackPath = "/api/v1/payments/confirm"
-	cancelCallbackPath  = "/api/v1/payments/cancel"
+	confirmCallbackPath = "/payments/confirm"
+	cancelCallbackPath  = "/payments/cancel"
 )
 
 type PaymentService interface {
-	Deposit(req *models.DepositRequest, baseURL string) (redirectUrl string, err error)
+	Deposit(req *models.DepositRequest) (redirectUrl string, err error)
 	Withdraw(req *models.WithdrawRequest) error
 	Transfer(req *models.TransferRequest) error
 	Confirm(req *psp.ConfirmRequest) error
@@ -44,7 +45,7 @@ func NewPaymentService(userRepo repos.UserRepo, transactionRepo repos.Transactio
 	}
 }
 
-func (srv *paymentService) Deposit(req *models.DepositRequest, baseURL string) (redirectUrl string, err error) {
+func (srv *paymentService) Deposit(req *models.DepositRequest) (redirectUrl string, err error) {
 	if req.Amount < MIN_DEPOSIT_AMOUNT {
 		return "", fmt.Errorf("deposit amount %.2f is below minimum allowed amount %.2f", req.Amount, MIN_DEPOSIT_AMOUNT)
 	}
@@ -69,11 +70,12 @@ func (srv *paymentService) Deposit(req *models.DepositRequest, baseURL string) (
 	}
 
 	provider := srv.pspFactory.NewPaymentServiceProvider(req.PaymentMethod)
+	baseUrl := os.Getenv("API_GATEWAY_URL")
 	res, err := provider.PayIn(&psp.PayInRequest{
 		TransactionID:      tx.UUID.String(),
 		Amount:             tx.Amount,
-		ConfirmCallbackURL: fmt.Sprintf("%s%s", baseURL, confirmCallbackPath),
-		CancelCallbackURL:  fmt.Sprintf("%s%s", baseURL, cancelCallbackPath),
+		ConfirmCallbackURL: fmt.Sprintf("%s%s", baseUrl, confirmCallbackPath),
+		CancelCallbackURL:  fmt.Sprintf("%s%s", baseUrl, cancelCallbackPath),
 	})
 	if err != nil {
 		log.Panicf("Payment service provider '%s' error: %v", req.PaymentMethod, err)

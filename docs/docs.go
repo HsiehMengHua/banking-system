@@ -687,11 +687,15 @@ const docTemplate = `{
         "models.WithdrawRequest": {
             "type": "object",
             "required": [
-                "amount"
+                "amount",
+                "payment_method"
             ],
             "properties": {
                 "amount": {
                     "type": "number"
+                },
+                "bank_account_id": {
+                    "type": "integer"
                 },
                 "payment_method": {
                     "type": "string"

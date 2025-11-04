@@ -277,18 +277,20 @@ func TestWithdraw_Success(t *testing.T) {
 	user := givenUserHasBalance(200.00)
 
 	req, _ := json.Marshal(&models.WithdrawRequest{
-		UUID:   txUUID,
-		Amount: 50.00,
+		UUID:          txUUID,
+		PaymentMethod: "AnyPay",
+		Amount:        50.00,
 	})
 	res := postRequestWithHandler("/api/v1/payments/withdraw", sut.Withdraw, req, user.ID)
 
 	assert.Equal(t, http.StatusOK, res.Code)
 	expectTransactionEqual(t, &entities.Transaction{
-		UUID:     txUUID,
-		WalletID: user.Wallet.ID,
-		Type:     entities.TransactionTypes.Withdrawal,
-		Status:   entities.TransactionStatuses.Pending,
-		Amount:   50.00,
+		UUID:          txUUID,
+		WalletID:      user.Wallet.ID,
+		Type:          entities.TransactionTypes.Withdrawal,
+		Status:        entities.TransactionStatuses.Pending,
+		PaymentMethod: "AnyPay",
+		Amount:        50.00,
 	})
 	expectBalance(t, user.Wallet.ID, 150.00) // Balance should be deducted
 }
@@ -304,8 +306,9 @@ func TestWithdraw_InsufficientBalance(t *testing.T) {
 	user := givenUserHasBalance(30.00)
 
 	req, _ := json.Marshal(&models.WithdrawRequest{
-		UUID:   txUUID,
-		Amount: 50.00, // More than available balance
+		UUID:          txUUID,
+		PaymentMethod: "AnyPay",
+		Amount:        50.00, // More than available balance
 	})
 	res := postRequestWithHandler("/api/v1/payments/withdraw", sut.Withdraw, req, user.ID)
 
@@ -323,8 +326,9 @@ func TestWithdraw_DuplicateRequests(t *testing.T) {
 
 	txUUID := uuid.New()
 	req, _ := json.Marshal(&models.WithdrawRequest{
-		UUID:   txUUID,
-		Amount: 50.00,
+		UUID:          txUUID,
+		PaymentMethod: "AnyPay",
+		Amount:        50.00,
 	})
 
 	// assert PayOut is called only once

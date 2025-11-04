@@ -97,6 +97,8 @@ definitions:
     properties:
       amount:
         type: number
+      bank_account_id:
+        type: integer
       payment_method:
         type: string
       userID:
@@ -105,6 +107,7 @@ definitions:
         type: string
     required:
     - amount
+    - payment_method
     type: object
   psp.CancelRequest:
     properties:
