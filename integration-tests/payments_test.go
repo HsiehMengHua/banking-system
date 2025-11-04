@@ -457,7 +457,7 @@ func TestTransfer_Success(t *testing.T) {
 		Amount:            10.00,
 	})
 
-	res := postRequest("/api/v1/payments/transfer", req)
+	res := postRequest("/api/v1/payments/transfer", req, sender.ID)
 
 	assert.Equal(t, http.StatusOK, res.Code)
 	expectBalance(t, sender.Wallet.ID, 190.00)
@@ -479,7 +479,7 @@ func TestTransfer_InsufficientBalance(t *testing.T) {
 		Amount:            100.00, // More than sender's balance
 	})
 
-	res := postRequest("/api/v1/payments/transfer", req)
+	res := postRequest("/api/v1/payments/transfer", req, sender.ID)
 
 	assert.Equal(t, http.StatusBadRequest, res.Code)
 	expectBalance(t, sender.Wallet.ID, 30.00, "Balance should remain unchanged")
@@ -499,7 +499,7 @@ func TestTransfer_SameUser(t *testing.T) {
 		Amount:            50.00,
 	})
 
-	res := postRequest("/api/v1/payments/transfer", req)
+	res := postRequest("/api/v1/payments/transfer", req, user.ID)
 
 	assert.Equal(t, http.StatusBadRequest, res.Code)
 	expectBalance(t, user.Wallet.ID, 100.00, "Balance should remain unchanged")
@@ -519,7 +519,7 @@ func TestTransfer_BelowMinimum(t *testing.T) {
 		Amount:            0.50, // Below minimum
 	})
 
-	res := postRequest("/api/v1/payments/transfer", req)
+	res := postRequest("/api/v1/payments/transfer", req, sender.ID)
 
 	assert.Equal(t, http.StatusBadRequest, res.Code)
 	expectBalance(t, sender.Wallet.ID, 100.00, "Balance should remain unchanged")
@@ -540,7 +540,7 @@ func TestTransfer_AboveMaximum(t *testing.T) {
 		Amount:            150000.00, // Above maximum
 	})
 
-	res := postRequest("/api/v1/payments/transfer", req)
+	res := postRequest("/api/v1/payments/transfer", req, sender.ID)
 
 	assert.Equal(t, http.StatusBadRequest, res.Code)
 	expectBalance(t, sender.Wallet.ID, 200000.00, "Balance should remain unchanged")
@@ -570,7 +570,7 @@ func TestTransfer_ConcurrentRequests(t *testing.T) {
 	for i := range concurrentRequests {
 		go func(index int) {
 			defer wg.Done()
-			postRequest("/api/v1/payments/transfer", body)
+			postRequest("/api/v1/payments/transfer", body, sender.ID)
 		}(i)
 	}
 
@@ -601,10 +601,16 @@ func truncateTables() {
 	database.DB.Exec("SET session_replication_role = 'origin';")
 }
 
-func postRequest(path string, body []byte) *httptest.ResponseRecorder {
+func postRequest(path string, body []byte, userID ...uint) *httptest.ResponseRecorder {
 	res := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", path, bytes.NewReader(body))
 	req.Header.Add("Content-Type", "application/json")
+
+	// Set X-USER-ID header if provided
+	if len(userID) > 0 {
+		req.Header.Set("X-User-ID", fmt.Sprintf("%d", userID[0]))
+	}
+
 	r.ServeHTTP(res, req)
 	return res
 }
