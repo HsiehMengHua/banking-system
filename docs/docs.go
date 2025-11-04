@@ -544,6 +544,47 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/user/{user_id}": {
+            "get": {
+                "description": "Retrieves user information including username and balance by user ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get user information",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User information retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.UserInfoResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - invalid user ID",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -649,8 +690,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "amount",
-                "recipient_username",
-                "sender_user_id"
+                "recipient_username"
             ],
             "properties": {
                 "amount": {
@@ -659,7 +699,7 @@ const docTemplate = `{
                 "recipient_username": {
                     "type": "string"
                 },
-                "sender_user_id": {
+                "senderUserID": {
                     "type": "integer"
                 },
                 "uuid": {
@@ -681,6 +721,17 @@ const docTemplate = `{
                 "bank_code": {
                     "type": "string",
                     "maxLength": 50
+                }
+            }
+        },
+        "models.UserInfoResponse": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "number"
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         },

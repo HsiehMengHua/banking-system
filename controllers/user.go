@@ -6,6 +6,7 @@ import (
 	"banking-system/services"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -18,6 +19,7 @@ import (
 type UserController interface {
 	Register(c *gin.Context)
 	Login(c *gin.Context)
+	GetByID(c *gin.Context)
 }
 
 type userController struct {
@@ -145,4 +147,37 @@ func (*userController) generateToken(user *entities.User) string {
 	}
 
 	return tokenString
+}
+
+// @Summary      Get user information
+// @Description  Retrieves user information including username and balance by user ID
+// @Tags         users
+// @Accept       json
+// @Param        user_id path int true "User ID"
+// @Success      200  {object}  models.UserInfoResponse  "User information retrieved successfully"
+// @Response     400  {object}  object  "Bad request - invalid user ID"
+// @Response     404  {object}  object  "User not found"
+// @Router       /user/{user_id} [get]
+func (ctrl *userController) GetByID(c *gin.Context) {
+	userIDStr := c.Param("user_id")
+	userID, err := strconv.ParseUint(userIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Invalid user ID",
+		})
+		return
+	}
+
+	userInfo, err := ctrl.userSrv.GetByID(uint(userID))
+	if err != nil {
+		if err.Error() == "user not found" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": err.Error(),
+			})
+			return
+		}
+		log.Panicf("Failed to get user info: %v", err)
+	}
+
+	c.JSON(http.StatusOK, userInfo)
 }

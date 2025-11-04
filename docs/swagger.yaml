@@ -72,14 +72,13 @@ definitions:
         type: number
       recipient_username:
         type: string
-      sender_user_id:
+      senderUserID:
         type: integer
       uuid:
         type: string
     required:
     - amount
     - recipient_username
-    - sender_user_id
     type: object
   models.UpdateBankAccountRequest:
     properties:
@@ -92,6 +91,13 @@ definitions:
     required:
     - account_number
     - bank_code
+    type: object
+  models.UserInfoResponse:
+    properties:
+      balance:
+        type: number
+      username:
+        type: string
     type: object
   models.WithdrawRequest:
     properties:
@@ -453,6 +459,34 @@ paths:
           schema:
             type: object
       summary: Register a new user
+      tags:
+      - users
+  /user/{user_id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves user information including username and balance by user
+        ID
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: User information retrieved successfully
+          schema:
+            $ref: '#/definitions/models.UserInfoResponse'
+        "400":
+          description: Bad request - invalid user ID
+          schema:
+            type: object
+        "404":
+          description: User not found
+          schema:
+            type: object
+      summary: Get user information
       tags:
       - users
   /user/login:

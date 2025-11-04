@@ -16,6 +16,7 @@ import (
 type UserService interface {
 	Register(req *models.RegisterRequest) error
 	GetByUsername(username string) (*entities.User, error)
+	GetByID(id uint) (*models.UserInfoResponse, error)
 }
 
 type userService struct {
@@ -65,4 +66,19 @@ func (srv *userService) GetByUsername(username string) (*entities.User, error) {
 		}
 	}
 	return userEntity, nil
+}
+
+func (srv *userService) GetByID(id uint) (*models.UserInfoResponse, error) {
+	user, err := srv.userRepo.Get(id)
+	if err != nil {
+		if err.Error() == "record not found" {
+			return nil, fmt.Errorf("user not found")
+		}
+		log.Panicf("Failed to get user by ID: %v", err)
+	}
+
+	return &models.UserInfoResponse{
+		Username: user.Username,
+		Balance:  user.Wallet.Balance,
+	}, nil
 }

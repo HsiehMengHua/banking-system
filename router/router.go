@@ -28,6 +28,7 @@ func Setup() *gin.Engine {
 			userApi := api.Group("/user")
 			userApi.POST("", userCtrl.Register)
 			userApi.POST("/login", userCtrl.Login)
+			userApi.GET("/:user_id", userCtrl.GetByID)
 		}
 
 		{
