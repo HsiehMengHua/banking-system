@@ -30,11 +30,12 @@ func NewPaymentController(paymentSrv services.PaymentService) PaymentController 
 }
 
 // @Summary      Initiate a Deposit Transaction
-// @Description  Creates a new PENDING transaction and redirects the user to the Payment Service Provider (PSP) for payment completion.
+// @Description  Creates a new PENDING transaction and returns the redirect URL to the Payment Service Provider (PSP) for payment completion.
 // @Tags         payments
 // @Accept       json
 // @Param        request body models.DepositRequest true "Deposit initiation details"
-// @Response     302  {object}  string  "Redirect to PSP payment page"
+// @Success      200  {object}  object{redirect_url=string}  "Deposit initiated successfully with PSP redirect URL"
+// @Response     400  {object}  object  "Bad request - validation error"
 // @Router       /payments/deposit [post]
 func (ctrl *paymentController) Deposit(c *gin.Context) {
 	var req models.DepositRequest
@@ -62,7 +63,9 @@ func (ctrl *paymentController) Deposit(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusFound, redirectUrl)
+	c.JSON(http.StatusOK, gin.H{
+		"redirect_url": redirectUrl,
+	})
 }
 
 // @Summary      Initiate a Withdrawal Transaction

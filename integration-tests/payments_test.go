@@ -58,8 +58,8 @@ func TestDeposit(t *testing.T) {
 	})
 	res := postRequestWithHandler("/api/v1/payments/deposit", sut.Deposit, req, user.ID)
 
-	assert.Equal(t, http.StatusFound, res.Code)
-	assert.Equal(t, redirectUrl, res.Result().Header.Get("Location"))
+	assert.Equal(t, http.StatusOK, res.Code)
+	assert.Equal(t, redirectUrl, getResponseField(res, "redirect_url"))
 	expectTransactionEqual(t, &entities.Transaction{
 		UUID:          txUUID,
 		WalletID:      user.Wallet.ID,
@@ -108,7 +108,7 @@ func TestDeposit_DuplicateRequests(t *testing.T) {
 
 			res := postRequestWithHandler("/api/v1/payments/deposit", sut.Deposit, req, user.ID)
 
-			if res.Code == http.StatusFound {
+			if res.Code == http.StatusOK {
 				successCount <- true
 			} else {
 				failureCount <- true
@@ -747,4 +747,10 @@ func expectBalance(t *testing.T, walletId uint, amount float64, msgAndArgs ...in
 
 	assert.Nil(t, result.Error)
 	assert.Equal(t, amount, wallet.Balance, msgAndArgs...)
+}
+
+func getResponseField(resp *httptest.ResponseRecorder, field string) string {
+	var response map[string]interface{}
+	json.Unmarshal(resp.Body.Bytes(), &response)
+	return response[field].(string)
 }
