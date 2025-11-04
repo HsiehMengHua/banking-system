@@ -5,6 +5,7 @@ import (
 	"banking-system/psp"
 	"banking-system/services"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -55,7 +56,11 @@ func (ctrl *paymentController) Deposit(c *gin.Context) {
 
 	req.UserID = userID
 
-	redirectUrl, err := ctrl.paymentSrv.Deposit(&req)
+	var scheme string = "https"
+	if c.Request.TLS == nil {
+		scheme = "http"
+	}
+	redirectUrl, err := ctrl.paymentSrv.Deposit(&req, fmt.Sprintf("%s://%s", scheme, c.Request.Host))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": err.Error(),

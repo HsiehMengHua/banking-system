@@ -648,7 +648,7 @@ func givenPayInResponse(txUUID string, redirectUrl string) {
 		NewPaymentServiceProvider(gomock.Any()).
 		Return(paymentProviderMock)
 
-	paymentProviderMock.EXPECT().PayIn().
+	paymentProviderMock.EXPECT().PayIn(gomock.Any()).
 		Return(&psp.PayInResponse{
 			TransactionID: txUUID,
 			RedirectUrl:   redirectUrl,
@@ -661,7 +661,7 @@ func expectPayInCalledOnce() {
 		Return(paymentProviderMock).
 		Times(1)
 
-	paymentProviderMock.EXPECT().PayIn().
+	paymentProviderMock.EXPECT().PayIn(gomock.Any()).
 		Return(&psp.PayInResponse{}, nil).
 		Times(1)
 }

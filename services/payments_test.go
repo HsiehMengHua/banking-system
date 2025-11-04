@@ -44,7 +44,7 @@ func TestValidDeposit(t *testing.T) {
 	expectTransactionCreated()
 
 	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, pspFactoryMock)
-	_, err := sut.Deposit(req)
+	_, err := sut.Deposit(req, "http://doesnt.matter")
 	if err != nil {
 		t.Errorf("Expected no error, got: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestDeposit_PspRespondsError(t *testing.T) {
 
 	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, pspFactoryMock)
 
-	expectPanic(t, func() { sut.Deposit(req) })
+	expectPanic(t, func() { sut.Deposit(req, "http://doesnt.matter") })
 }
 
 func TestDeposit_MinimumAmount(t *testing.T) {
@@ -91,7 +91,7 @@ func TestDeposit_MinimumAmount(t *testing.T) {
 	expectTransactionCreated()
 
 	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, pspFactoryMock)
-	_, err := sut.Deposit(req)
+	_, err := sut.Deposit(req, "http://doesnt.matter")
 
 	assert.Nil(t, err, "Expected no error, got: %v", err)
 }
@@ -114,7 +114,7 @@ func TestDeposit_MaximumAmount(t *testing.T) {
 	expectTransactionCreated()
 
 	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, pspFactoryMock)
-	_, err := sut.Deposit(req)
+	_, err := sut.Deposit(req, "http://doesnt.matter")
 
 	assert.Nil(t, err, "Expected no error, got: %v", err)
 }
@@ -134,7 +134,7 @@ func TestDeposit_BelowMinimum(t *testing.T) {
 
 	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, pspFactoryMock)
 
-	_, err := sut.Deposit(req)
+	_, err := sut.Deposit(req, "http://doesnt.matter")
 
 	assert.NotNil(t, err, "Expected error for amount below minimum, got nil")
 }
@@ -154,7 +154,7 @@ func TestDeposit_AboveMaximum(t *testing.T) {
 
 	sut := services.NewPaymentService(userRepoMock, transactionRepoMock, pspFactoryMock)
 
-	_, err := sut.Deposit(req)
+	_, err := sut.Deposit(req, "http://doesnt.matter")
 	assert.NotNil(t, err, "Expected error for amount above maximum, got nil")
 }
 
@@ -224,7 +224,7 @@ func givenPayInResponse(redirectUrl string, err error) {
 		Times(1)
 
 	paymentProviderMock.EXPECT().
-		PayIn().
+		PayIn(gomock.Any()).
 		Return(&psp.PayInResponse{
 			RedirectUrl: redirectUrl,
 		}, err).

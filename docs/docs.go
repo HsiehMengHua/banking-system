@@ -105,7 +105,7 @@ const docTemplate = `{
         },
         "/payments/deposit": {
             "post": {
-                "description": "Creates a new PENDING transaction and redirects the user to the Payment Service Provider (PSP) for payment completion.",
+                "description": "Creates a new PENDING transaction and returns the redirect URL to the Payment Service Provider (PSP) for payment completion.",
                 "consumes": [
                     "application/json"
                 ],
@@ -125,10 +125,21 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "302": {
-                        "description": "Redirect to PSP payment page",
+                    "200": {
+                        "description": "Deposit initiated successfully with PSP redirect URL",
                         "schema": {
-                            "type": "string"
+                            "type": "object",
+                            "properties": {
+                                "redirect_url": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - validation error",
+                        "schema": {
+                            "type": "object"
                         }
                     }
                 }
@@ -282,20 +293,16 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "amount",
-                "currency",
-                "user_id"
+                "uuid"
             ],
             "properties": {
                 "amount": {
                     "type": "number"
                 },
-                "currency": {
-                    "type": "string"
-                },
                 "payment_method": {
                     "type": "string"
                 },
-                "user_id": {
+                "userID": {
                     "type": "integer"
                 },
                 "uuid": {
@@ -344,16 +351,12 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "amount",
-                "currency",
                 "recipient_user_id",
                 "sender_user_id"
             ],
             "properties": {
                 "amount": {
                     "type": "number"
-                },
-                "currency": {
-                    "type": "string"
                 },
                 "recipient_user_id": {
                     "type": "integer"
@@ -369,18 +372,16 @@ const docTemplate = `{
         "models.WithdrawRequest": {
             "type": "object",
             "required": [
-                "amount",
-                "currency",
-                "user_id"
+                "amount"
             ],
             "properties": {
                 "amount": {
                     "type": "number"
                 },
-                "currency": {
+                "payment_method": {
                     "type": "string"
                 },
-                "user_id": {
+                "userID": {
                     "type": "integer"
                 },
                 "uuid": {
@@ -390,8 +391,11 @@ const docTemplate = `{
         },
         "psp.CancelRequest": {
             "type": "object",
+            "required": [
+                "transaction_id"
+            ],
             "properties": {
-                "transactionID": {
+                "transaction_id": {
                     "type": "string"
                 }
             }

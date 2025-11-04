@@ -18,10 +18,12 @@ const (
 	MAX_DEPOSIT_AMOUNT  = 100000.00
 	MIN_TRANSFER_AMOUNT = 1.00
 	MAX_TRANSFER_AMOUNT = 100000.00
+	confirmCallbackPath = "/api/v1/payments/confirm"
+	cancelCallbackPath  = "/api/v1/payments/cancel"
 )
 
 type PaymentService interface {
-	Deposit(req *models.DepositRequest) (redirectUrl string, err error)
+	Deposit(req *models.DepositRequest, baseURL string) (redirectUrl string, err error)
 	Withdraw(req *models.WithdrawRequest) error
 	Transfer(req *models.TransferRequest) error
 	Confirm(req *psp.ConfirmRequest) error
@@ -42,7 +44,7 @@ func NewPaymentService(userRepo repos.UserRepo, transactionRepo repos.Transactio
 	}
 }
 
-func (srv *paymentService) Deposit(req *models.DepositRequest) (redirectUrl string, err error) {
+func (srv *paymentService) Deposit(req *models.DepositRequest, baseURL string) (redirectUrl string, err error) {
 	if req.Amount < MIN_DEPOSIT_AMOUNT {
 		return "", fmt.Errorf("deposit amount %.2f is below minimum allowed amount %.2f", req.Amount, MIN_DEPOSIT_AMOUNT)
 	}
@@ -66,8 +68,13 @@ func (srv *paymentService) Deposit(req *models.DepositRequest) (redirectUrl stri
 		log.Panicf("Failed to create transaction: %v", err)
 	}
 
-	psp := srv.pspFactory.NewPaymentServiceProvider(req.PaymentMethod)
-	res, err := psp.PayIn()
+	provider := srv.pspFactory.NewPaymentServiceProvider(req.PaymentMethod)
+	res, err := provider.PayIn(&psp.PayInRequest{
+		TransactionID:      tx.UUID.String(),
+		Amount:             tx.Amount,
+		ConfirmCallbackURL: fmt.Sprintf("%s%s", baseURL, confirmCallbackPath),
+		CancelCallbackURL:  fmt.Sprintf("%s%s", baseURL, cancelCallbackPath),
+	})
 	if err != nil {
 		log.Panicf("Payment service provider '%s' error: %v", req.PaymentMethod, err)
 	}
@@ -104,8 +111,8 @@ func (srv *paymentService) Withdraw(req *models.WithdrawRequest) error {
 		log.Panicf("Failed to update wallet for user ID %d: %v", req.UserID, err)
 	}
 
-	psp := srv.pspFactory.NewPaymentServiceProvider(req.PaymentMethod)
-	_, err = psp.PayOut()
+	provider := srv.pspFactory.NewPaymentServiceProvider(req.PaymentMethod)
+	_, err = provider.PayOut()
 	if err != nil {
 		log.Panicf("Payment service provider error: %v", err)
 	}

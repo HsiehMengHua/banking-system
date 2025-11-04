@@ -1,8 +1,8 @@
 package psp
 
-//go:generate mockgen -source=psp.go -destination=mock/psp.go
+//go:generate mockgen -source=payment-service-provider.go -destination=mock/payment-service-provider.go
 
 type PaymentServiceProvider interface {
-	PayIn() (*PayInResponse, error)
+	PayIn(req *PayInRequest) (*PayInResponse, error)
 	PayOut() (*PayOutResponse, error)
 }

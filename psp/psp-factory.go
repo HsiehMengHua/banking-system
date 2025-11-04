@@ -24,7 +24,7 @@ var PaymentMethods = struct {
 	// CreditCard PaymentMethod
 	// PayPal     PaymentMethod
 }{
-	FakePay: "fake_pay",
+	FakePay: "FakePay",
 
 	// others for example...
 	// CreditCard: "credit_card",

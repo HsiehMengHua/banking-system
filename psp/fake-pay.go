@@ -2,6 +2,7 @@ package psp
 
 import (
 	"fmt"
+	"os"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -13,16 +14,12 @@ func NewFakePay() PaymentServiceProvider {
 	return &fakePay{}
 }
 
-const (
-	fakePayURL = "https://fake-payment-service-provider-production.up.railway.app"
-)
-
-func (*fakePay) PayIn() (*PayInResponse, error) {
+func (*fakePay) PayIn(req *PayInRequest) (*PayInResponse, error) {
 	log.Debug("Simulate third party deposit process...")
 
 	return &PayInResponse{
-		TransactionID: "<transaction_id>",
-		RedirectUrl:   fmt.Sprintf("%s", fakePayURL),
+		TransactionID: req.TransactionID,
+		RedirectUrl:   fmt.Sprintf("%s/payin/%s?merchant=MH&amount=%.2f&confirm_callback=%s&cancel_callback=%s", os.Getenv("FAKE_PAYMENT_PROVIDER_URL"), req.TransactionID, req.Amount, req.ConfirmCallbackURL, req.CancelCallbackURL),
 	}, nil
 }
 
