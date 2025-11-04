@@ -3,6 +3,7 @@ package repos
 import (
 	"banking-system/database"
 	"banking-system/entities"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -16,6 +17,7 @@ type TransactionRepo interface {
 	Update(tx *entities.Transaction) error
 	UpdateConditional(tx *entities.Transaction, expectedStatus entities.TransactionStatus) (bool, error)
 	CreateTransferTransactions(transferOutTx *entities.Transaction, transferInTx *entities.Transaction) error
+	GetByUserID(userID uint, cutoffDate time.Time) ([]entities.Transaction, error)
 }
 
 type transactionRepo struct {
@@ -107,4 +109,16 @@ func (*transactionRepo) CreateTransferTransactions(transferOutTx *entities.Trans
 
 		return nil
 	})
+}
+
+func (*transactionRepo) GetByUserID(userID uint, cutoffDate time.Time) ([]entities.Transaction, error) {
+	var transactions []entities.Transaction
+
+	result := database.DB.
+		Joins("JOIN wallets ON wallets.id = transactions.wallet_id").
+		Where("wallets.user_id = ? AND transactions.created_at >= ?", userID, cutoffDate).
+		Order("transactions.created_at DESC").
+		Find(&transactions)
+
+	return transactions, result.Error
 }

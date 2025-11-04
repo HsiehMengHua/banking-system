@@ -18,9 +18,11 @@ func Setup() *gin.Engine {
 	r.StaticFile("/version", "./version.txt")
 
 	userRepo := repos.NewUserRepo()
-	paymentCtrl := controllers.NewPaymentController(services.NewPaymentService(userRepo, repos.NewTransactionRepo(), psp.NewPSPFactory()))
+	transactionRepo := repos.NewTransactionRepo()
+	paymentCtrl := controllers.NewPaymentController(services.NewPaymentService(userRepo, transactionRepo, psp.NewPSPFactory()))
 	userCtrl := controllers.NewUserController(services.NewUserService(userRepo))
 	bankAccountCtrl := controllers.NewBankAccountController(services.NewBankAccountService(repos.NewBankAccountRepo()))
+	transactionCtrl := controllers.NewTransactionController(services.NewTransactionService(transactionRepo))
 
 	api := r.Group("/api/v1")
 	{
@@ -48,6 +50,11 @@ func Setup() *gin.Engine {
 			bankAccountApi.GET("/:id", bankAccountCtrl.GetByID)
 			bankAccountApi.PUT("/:id", bankAccountCtrl.Update)
 			bankAccountApi.DELETE("/:id", bankAccountCtrl.Delete)
+		}
+
+		{
+			transactionApi := api.Group("/transactions")
+			transactionApi.GET("/user/:user_id", transactionCtrl.GetByUserID)
 		}
 	}
 

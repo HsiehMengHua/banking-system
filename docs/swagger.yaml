@@ -66,6 +66,21 @@ definitions:
     - password
     - username
     type: object
+  models.TransactionResponse:
+    properties:
+      amount:
+        type: number
+      created_at:
+        type: string
+      payment_method:
+        type: string
+      status:
+        type: string
+      type:
+        type: string
+      uuid:
+        type: string
+    type: object
   models.TransferRequest:
     properties:
       amount:
@@ -438,6 +453,31 @@ paths:
       summary: Initiate a Withdrawal Transaction
       tags:
       - payments
+  /transactions/user/{user_id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves all transactions for a user within the last 6 months
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: List of transactions
+          schema:
+            items:
+              $ref: '#/definitions/models.TransactionResponse'
+            type: array
+        "400":
+          description: Bad request - invalid user ID
+          schema:
+            type: object
+      summary: Get user transactions
+      tags:
+      - transactions
   /user:
     post:
       consumes:
