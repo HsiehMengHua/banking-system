@@ -186,20 +186,8 @@ func (srv *paymentService) Confirm(req *psp.ConfirmRequest) error {
 		log.Panicf("Failed to get transaction: %v", err)
 	}
 
-	if tx.Status != entities.TransactionStatuses.Pending {
-		log.Infof("Transaction '%s' already processed with status: %s", req.TransactionID, tx.Status)
-		return nil
-	}
-
-	tx.Status = entities.TransactionStatuses.Completed
-
-	switch tx.Type {
-	case entities.TransactionTypes.Deposit:
-		tx.Wallet.Balance += tx.Amount
-	case entities.TransactionTypes.Withdrawal:
-		// No action needed, amount already deducted during withdrawal initiation
-	default:
-		log.Panicf("Unknown transaction type: %s", tx.Type)
+	if err = tx.Complete(); err != nil {
+		log.Panicf("Failed to complete transaction: %v", err)
 	}
 
 	updated, err := srv.transactionRepo.UpdateConditional(tx, entities.TransactionStatuses.Pending)
@@ -220,19 +208,8 @@ func (srv *paymentService) Cancel(req *psp.CancelRequest) error {
 		log.Panicf("Failed to get transaction: %v", err)
 	}
 
-	if tx.Status != entities.TransactionStatuses.Pending {
-		log.Infof("Transaction '%s' already processed with status: %s", req.TransactionID, tx.Status)
-		return nil
-	}
-
-	tx.Status = entities.TransactionStatuses.Canceled
-
-	switch tx.Type {
-	case entities.TransactionTypes.Withdrawal:
-		tx.Wallet.Balance += tx.Amount
-	case entities.TransactionTypes.Deposit:
-	default:
-		log.Panicf("Unknown transaction type: %s", tx.Type)
+	if err = tx.Cancel(); err != nil {
+		log.Panicf("Failed to cancel transaction: %v", err)
 	}
 
 	updated, err := srv.transactionRepo.UpdateConditional(tx, entities.TransactionStatuses.Pending)

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
 )
 
 type TransactionType string
@@ -50,4 +51,43 @@ type Transaction struct {
 
 	RelatedTransactionID *uuid.UUID   `gorm:"index"`
 	RelatedTransaction   *Transaction `gorm:"foreignKey:RelatedTransactionID;references:UUID"`
+}
+
+func (tx *Transaction) Complete() error {
+	if tx.Status != TransactionStatuses.Pending {
+		log.Infof("Transaction '%s' already processed with status: %s", tx.UUID, tx.Status)
+		return nil
+	}
+
+	tx.Status = TransactionStatuses.Completed
+
+	switch tx.Type {
+	case TransactionTypes.Deposit:
+		tx.Wallet.Balance += tx.Amount
+	case TransactionTypes.Withdrawal:
+		// No action needed, amount already deducted during withdrawal initiation
+	default:
+		log.Panicf("Unknown transaction type: %s", tx.Type)
+	}
+
+	return nil
+}
+
+func (tx *Transaction) Cancel() error {
+	if tx.Status != TransactionStatuses.Pending {
+		log.Infof("Transaction '%s' already processed with status: %s", tx.UUID, tx.Status)
+		return nil
+	}
+
+	tx.Status = TransactionStatuses.Canceled
+
+	switch tx.Type {
+	case TransactionTypes.Withdrawal:
+		tx.Wallet.Balance += tx.Amount
+	case TransactionTypes.Deposit:
+	default:
+		log.Panicf("Unknown transaction type: %s", tx.Type)
+	}
+
+	return nil
 }
