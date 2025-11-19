@@ -23,6 +23,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	pspMock "banking-system/psp/mock"
 )
@@ -74,16 +75,14 @@ func TestDeposit(t *testing.T) {
 
 func TestDeposit_DuplicateRequests(t *testing.T) {
 	truncateTables()
-	ctrl := gomock.NewController(t)
-	pspFactoryMock = pspMock.NewMockPSPFactory(ctrl)
-	paymentProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
 
-	// // assert PayIn is called only once
-	expectPayInCalledOnce()
-
-	sut := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), pspFactoryMock))
+	mockPSPFactory := new(pspMock.MockPSPFactoryTestify)
+	mockPaymentProvider := new(pspMock.MockPaymentServiceProviderTestify)
+	mockPSPFactory.On("NewPaymentServiceProvider", psp.PaymentMethod("AnyPay")).Return(mockPaymentProvider)
+	mockPaymentProvider.On("PayIn", mock.Anything).Return(&psp.PayInResponse{}, nil)
 
 	user := givenUserHasBalance(0)
+	sut := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), mockPSPFactory))
 
 	txUUID := uuid.New()
 	req, _ := json.Marshal(&models.DepositRequest{
@@ -92,7 +91,6 @@ func TestDeposit_DuplicateRequests(t *testing.T) {
 		PaymentMethod: "AnyPay",
 	})
 
-	// Simulate 10 concurrent requests
 	concurrentRequests := 10
 	successCount := make(chan bool, concurrentRequests)
 	failureCount := make(chan bool, concurrentRequests)
@@ -125,6 +123,7 @@ func TestDeposit_DuplicateRequests(t *testing.T) {
 
 	assert.Equal(t, 1, len(successCount), "Exactly one request should succeed.")
 	assert.Equal(t, concurrentRequests-1, len(failureCount), "The remaining requests should have failed.")
+	mockPaymentProvider.AssertNumberOfCalls(t, "PayIn", 1)
 }
 
 func TestDepositConfirm(t *testing.T) {
@@ -318,11 +317,14 @@ func TestWithdraw_InsufficientBalance(t *testing.T) {
 
 func TestWithdraw_DuplicateRequests(t *testing.T) {
 	truncateTables()
-	ctrl := gomock.NewController(t)
-	pspFactoryMock = pspMock.NewMockPSPFactory(ctrl)
-	paymentProviderMock = pspMock.NewMockPaymentServiceProvider(ctrl)
+
+	mockPSPFactory := new(pspMock.MockPSPFactoryTestify)
+	mockPaymentProvider := new(pspMock.MockPaymentServiceProviderTestify)
+	mockPSPFactory.On("NewPaymentServiceProvider", psp.PaymentMethod("AnyPay")).Return(mockPaymentProvider)
+	mockPaymentProvider.On("PayOut").Return(&psp.PayOutResponse{}, nil)
 
 	user := givenUserHasBalance(200.00)
+	sut := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), mockPSPFactory))
 
 	txUUID := uuid.New()
 	req, _ := json.Marshal(&models.WithdrawRequest{
@@ -331,12 +333,6 @@ func TestWithdraw_DuplicateRequests(t *testing.T) {
 		Amount:        50.00,
 	})
 
-	// assert PayOut is called only once
-	expectPayOutCalledOnce()
-
-	sut := controllers.NewPaymentController(services.NewPaymentService(repos.NewUserRepo(), repos.NewTransactionRepo(), pspFactoryMock))
-
-	// Simulate 10 concurrent requests
 	concurrentRequests := 10
 	successCount := make(chan bool, concurrentRequests)
 	failureCount := make(chan bool, concurrentRequests)
@@ -370,6 +366,7 @@ func TestWithdraw_DuplicateRequests(t *testing.T) {
 	assert.Equal(t, 1, len(successCount), "Exactly one request should succeed.")
 	assert.Equal(t, concurrentRequests-1, len(failureCount), "The remaining requests should have failed.")
 	expectBalance(t, user.Wallet.ID, 150.00) // Balance should be deducted only once
+	mockPaymentProvider.AssertNumberOfCalls(t, "PayOut", 1)
 }
 
 func TestWithdrawCancel(t *testing.T) {
