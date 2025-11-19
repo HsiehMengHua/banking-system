@@ -91,38 +91,13 @@ func TestDeposit_DuplicateRequests(t *testing.T) {
 		PaymentMethod: "AnyPay",
 	})
 
-	concurrentRequests := 10
-	successCount := make(chan bool, concurrentRequests)
-	failureCount := make(chan bool, concurrentRequests)
-	var wg sync.WaitGroup
-	wg.Add(concurrentRequests)
-
-	for i := 0; i < concurrentRequests; i++ {
-		go func(index int) {
-			defer wg.Done()
-			defer func() {
-				if r := recover(); r != nil {
-					failureCount <- true
-					return
-				}
-			}()
-
-			res := postRequestWithHandler("/api/v1/payments/deposit", sut.Deposit, req, user.ID)
-
-			if res.Code == http.StatusOK {
-				successCount <- true
-			} else {
-				failureCount <- true
-			}
-		}(i)
-	}
-
-	wg.Wait()
-	close(successCount)
-	close(failureCount)
+	concurrentCount := 10
+	successCount, failureCount := concurrentExec(func() *httptest.ResponseRecorder {
+		return postRequestWithHandler("/api/v1/payments/deposit", sut.Deposit, req, user.ID)
+	}, concurrentCount)
 
 	assert.Equal(t, 1, len(successCount), "Exactly one request should succeed.")
-	assert.Equal(t, concurrentRequests-1, len(failureCount), "The remaining requests should have failed.")
+	assert.Equal(t, concurrentCount-1, len(failureCount), "The remaining requests should have failed.")
 	mockPaymentProvider.AssertNumberOfCalls(t, "PayIn", 1)
 }
 
@@ -194,19 +169,11 @@ func TestDepositConfirm_ConcurrentRequests(t *testing.T) {
 	})
 
 	// Simulate 10 concurrent requests
-	concurrentRequests := 10
-	var wg sync.WaitGroup
-	wg.Add(concurrentRequests)
-
+	concurrentCount := 10
 	body, _ := json.Marshal(req)
-	for i := range concurrentRequests {
-		go func(index int) {
-			defer wg.Done()
-			postRequestWithPSPAuth("/api/v1/payments/confirm", body)
-		}(i)
-	}
-
-	wg.Wait()
+	concurrentExec(func() *httptest.ResponseRecorder {
+		return postRequestWithPSPAuth("/api/v1/payments/confirm", body)
+	}, concurrentCount)
 
 	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Completed)
 	expectBalance(t, user.Wallet.ID, 150.00)
@@ -333,38 +300,13 @@ func TestWithdraw_DuplicateRequests(t *testing.T) {
 		Amount:        50.00,
 	})
 
-	concurrentRequests := 10
-	successCount := make(chan bool, concurrentRequests)
-	failureCount := make(chan bool, concurrentRequests)
-	var wg sync.WaitGroup
-	wg.Add(concurrentRequests)
-
-	for i := range concurrentRequests {
-		go func(index int) {
-			defer wg.Done()
-			defer func() {
-				if r := recover(); r != nil {
-					failureCount <- true
-					return
-				}
-			}()
-
-			res := postRequestWithHandler("/api/v1/payments/withdraw", sut.Withdraw, req, user.ID)
-
-			if res.Code == http.StatusOK {
-				successCount <- true
-			} else {
-				failureCount <- true
-			}
-		}(i)
-	}
-
-	wg.Wait()
-	close(successCount)
-	close(failureCount)
+	concurrentCount := 10
+	successCount, failureCount := concurrentExec(func() *httptest.ResponseRecorder {
+		return postRequestWithHandler("/api/v1/payments/withdraw", sut.Withdraw, req, user.ID)
+	}, concurrentCount)
 
 	assert.Equal(t, 1, len(successCount), "Exactly one request should succeed.")
-	assert.Equal(t, concurrentRequests-1, len(failureCount), "The remaining requests should have failed.")
+	assert.Equal(t, concurrentCount-1, len(failureCount), "The remaining requests should have failed.")
 	expectBalance(t, user.Wallet.ID, 150.00) // Balance should be deducted only once
 	mockPaymentProvider.AssertNumberOfCalls(t, "PayOut", 1)
 }
@@ -411,31 +353,12 @@ func TestWithdrawCancel_ConcurrentRequests(t *testing.T) {
 	})
 
 	// Simulate 10 concurrent requests
-	concurrentRequests := 10
-	var wg sync.WaitGroup
-	wg.Add(concurrentRequests)
-	successCount := make(chan bool, concurrentRequests)
-	failureCount := make(chan bool, concurrentRequests)
+	concurrentCount := 10
+	successCount, _ := concurrentExec(func() *httptest.ResponseRecorder {
+		return postRequestWithPSPAuth("/api/v1/payments/cancel", body)
+	}, concurrentCount)
 
-	for i := range concurrentRequests {
-		go func(index int) {
-			defer wg.Done()
-
-			res := postRequestWithPSPAuth("/api/v1/payments/cancel", body)
-
-			if res.Code == http.StatusOK {
-				successCount <- true
-			} else {
-				failureCount <- true
-			}
-		}(i)
-	}
-
-	wg.Wait()
-	close(successCount)
-	close(failureCount)
-
-	assert.Equal(t, concurrentRequests, len(successCount), "All requests should succeed.")
+	assert.Equal(t, concurrentCount, len(successCount), "All requests should succeed.")
 	expectTransactionStatus(t, req.TransactionID, entities.TransactionStatuses.Canceled)
 	expectBalance(t, user.Wallet.ID, 110.00, "Balance should be refunded only once")
 }
@@ -559,19 +482,11 @@ func TestTransfer_ConcurrentRequests(t *testing.T) {
 	}
 
 	// Simulate 10 concurrent transfer requests with the same UUID
-	concurrentRequests := 10
-	var wg sync.WaitGroup
-	wg.Add(concurrentRequests)
-
+	concurrentCount := 10
 	body, _ := json.Marshal(transferRequest)
-	for i := range concurrentRequests {
-		go func(index int) {
-			defer wg.Done()
-			postRequest("/api/v1/payments/transfer", body, sender.ID)
-		}(i)
-	}
-
-	wg.Wait()
+	concurrentExec(func() *httptest.ResponseRecorder {
+		return postRequest("/api/v1/payments/transfer", body, sender.ID)
+	}, concurrentCount)
 
 	expectBalance(t, sender.Wallet.ID, 900.00, "Sender balance should be deducted only once")
 	expectBalance(t, recipient.Wallet.ID, 150.00, "Recipient balance should be credited only once")
@@ -746,4 +661,37 @@ func getResponseField(resp *httptest.ResponseRecorder, field string) string {
 	var response map[string]interface{}
 	json.Unmarshal(resp.Body.Bytes(), &response)
 	return response[field].(string)
+}
+
+func concurrentExec(fn func() *httptest.ResponseRecorder, concurrentCount int) (chan bool, chan bool) {
+	successCount := make(chan bool, concurrentCount)
+	failureCount := make(chan bool, concurrentCount)
+	var wg sync.WaitGroup
+	wg.Add(concurrentCount)
+
+	for i := range concurrentCount {
+		go func(index int) {
+			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					failureCount <- true
+					return
+				}
+			}()
+
+			res := fn()
+
+			if res.Code == http.StatusOK {
+				successCount <- true
+			} else {
+				failureCount <- true
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	close(successCount)
+	close(failureCount)
+
+	return successCount, failureCount
 }
